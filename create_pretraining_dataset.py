@@ -91,7 +91,7 @@ def main(args):
             probability_first_segment_over_length=args.probability_first_segment_over_length
         )
 
-        for example in tqdm(examples, desc="Adding samples to compressed dictionary"):
+        for example in tqdm(examples, desc="Adding samples to compressed dictionary", position=0):
             final_cdictionary[global_counter] = example
             global_counter += 1
 

@@ -5,7 +5,7 @@ from tqdm import tqdm
 def documents_to_sentences(documents, limit=None):
     r""" Split each document in a sentence using the blingfire tokenizer. """
 
-    for i, document in tqdm(enumerate(documents), desc="Splitting docs in sentences"):
+    for i, document in tqdm(enumerate(documents), desc="Splitting docs in sentences", position=3):
 
         if limit is not None and i >= limit:
             break

@@ -69,12 +69,10 @@ def multiprocessing_tokenizer(sentence_generator, tokenizer, num_processes):
     for w in tqdm(workers, total=num_processes, desc="Starting workers"):
         w.start()
 
-    producer_thread = Thread(target=producer, args=(
-        tqdm(sentence_generator, desc="Feeding processes", position=0), in_queues
-    ))
+    producer_thread = Thread(target=producer, args=(sentence_generator, in_queues))
     producer_thread.start()
 
-    for res in tqdm(consumer(out_queues), desc="Outputting tokenized lines", position=1):
+    for res in tqdm(consumer(out_queues), desc="Tokenized lines", position=2):
         yield res
 
     logging.info("Waiting for processes and threads to finish")

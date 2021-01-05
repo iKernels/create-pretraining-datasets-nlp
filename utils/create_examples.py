@@ -175,8 +175,7 @@ def create_examples(
         probability_first_segment_over_length=probability_first_segment_over_length
     )
 
-    n_created = 0
-    for sentence in tqdm(tokenized_sentences, desc="Creating examples"):
+    for sentence in tqdm(tokenized_sentences, desc="Creating examples", position=1):
 
         example = examples_builder.add_line(sentence)
         if example:
