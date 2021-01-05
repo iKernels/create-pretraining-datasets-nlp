@@ -38,7 +38,7 @@ def consumer(out_queues):
             yield res
 
 def parse_line(line: str, tokenizer: transformers.PreTrainedTokenizer):
-    res = tokenizer(line, return_attention_mask=False, return_token_type_ids=False)
+    res = tokenizer(line, return_attention_mask=False, return_token_type_ids=False, verbose=False)
     res['length'] = len(res['input_ids'])
     res["words_tails"] = [
         token.startswith('##')
