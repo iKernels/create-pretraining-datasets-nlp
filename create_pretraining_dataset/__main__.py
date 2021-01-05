@@ -75,7 +75,7 @@ def main(args):
         logging.info(f"Processing input dataset {name} with {dataset['train'].num_rows} documents")
         documents = dataset['train']['text']
 
-        sentences = documents_to_sentences(documents, limit=args.limit)
+        sentences = documents_to_sentences(documents, limit=args.limit, total=dataset['train'].num_rows)
 
         tokenizer_dataset_generator = multiprocessing_tokenizer(
             sentences, tokenizer=tokenizer, num_processes=args.num_processes
