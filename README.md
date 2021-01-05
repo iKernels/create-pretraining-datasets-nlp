@@ -13,12 +13,12 @@ pip install git+https://github.com/iKernels/create-pretraining-datasets-nlp.git 
 
 List available datasets
 ```bash
-python -m create_dataset.pretraining --dataset-names-list
+python -m create_pretraining_dataset --dataset-names-list
 ```
 
 Create a dataset (as a compressed dictionary)
 ```bash
-python -m create_dataset.pretraining \
+python -m create_pretraining_dataset \
     --output_file dataset.xz \
     --dataset-names wikipedia:20200501.en wikipedia:20200501.it \
     --tokenizer bert-base-cased \
