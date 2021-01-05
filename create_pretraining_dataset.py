@@ -7,11 +7,9 @@ import datasets
 from tqdm import tqdm
 from transformers import AutoTokenizer
 
-from utils.compressed_dictionary import CompressedDictionary
-from utils.create_examples import create_examples
-from utils.documents_to_sentences import documents_to_sentences
-from utils.multiprocessing_tokenizer import multiprocessing_tokenizer
-from utils.prepare_datasets import prepare_datasets
+from utils import (CompressedDictionary, create_examples,
+                   documents_to_sentences, multiprocessing_tokenizer,
+                   prepare_datasets)
 
 logging.getLogger().setLevel(logging.INFO)
 ALL_DATASET_NAMES = datasets.list_datasets()
