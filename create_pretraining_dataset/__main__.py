@@ -129,9 +129,9 @@ if __name__ == "__main__":
     parser.add_argument('--probability-first-segment-over-length', default=0.5, required=False, type=float,
                         help="Probability of creating a longer first sequence.")
 
-    args = parser.parse_args()
-
-    if args.dataset_names_list:
+    tmp_args, _ = parser.parse_known_args()
+    if tmp_args.dataset_names_list:
         logging.info(f"Available datasets {ALL_DATASET_NAMES}")
     else:
+        args = parser.parse_args()
         main(args)

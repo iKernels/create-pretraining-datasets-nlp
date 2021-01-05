@@ -118,5 +118,5 @@ class CompressedDictionary(MutableMapping):
     def __str__(self):
         return f"<CompressedDictionary object at {hash(self)}>"
     
-    def merge(self, other: CompressedDictionary) -> CompressedDictionary:
+    def merge(self, other):
         raise NotImplementedError()
