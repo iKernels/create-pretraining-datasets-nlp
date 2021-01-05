@@ -11,9 +11,9 @@ pip install git+https://github.com/iKernels/create-pretraining-datasets-nlp.git 
 
 ## Usage
 
-List available datasets
+List available datasets and other info about parameters
 ```bash
-python -m create_pretraining_dataset --dataset-names-list
+python -m create_pretraining_dataset --help
 ```
 
 Create a dataset (as a compressed dictionary)
@@ -36,8 +36,7 @@ Datasets are created by concatenating sentences coming from the same document an
 Available args:
 
 - `-o` or `--output-file`:  Output file path.
-- `--dataset-names`: List of datasets to be parsed and built into the dataset. Use `--dataset-names-list`. For more info about available datasets. Separate with a semicolon the specific dataset name from the config, for example `wikipedia:20200501.en`
-- `--dataset-names-list`: List all available datasets.
+- `--dataset-names`: List of datasets to be parsed and built into the dataset. Separate with a semicolon the specific dataset name from the config, for example `wikipedia:20200501.en`
 - `--tokenizer`: Name or path of the tokenizer to be used to tokenize the text.
 - `--max-sequence-length`: Max sequence length to fill examples.
 `--num-processes`: Number of parallel processes to use. Defaults to number of `#CPUs - 2`.
