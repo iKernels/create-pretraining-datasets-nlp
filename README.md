@@ -38,7 +38,7 @@ Available args:
 - `-o` or `--output-file`:  Output file path.
 - `--dataset-names`: List of datasets to be parsed and built into the dataset. Separate with a semicolon the specific dataset name from the config, for example `wikipedia:20200501.en`
 - `--tokenizer`: Name or path of the tokenizer to be used to tokenize the text.
-- `--max-sequence-length`: Max sequence length to fill examples.
+- `--max-sequence-length`: Max sequence length to fill examples. Defaults to `128`.
 `--num-processes`: Number of parallel processes to use. Defaults to number of `#CPUs - 2`.
 - `--do-not-pad`: Do not pad examples to `max-sequence-length`.
 - `--limit`: Limit number of documents in input for each dataset.

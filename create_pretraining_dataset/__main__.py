@@ -110,7 +110,7 @@ if __name__ == "__main__":
     
     parser.add_argument('--tokenizer', required=True, type=str,  
                         help="Name of the tokenizer to use to tokenizer the text.")
-    parser.add_argument('--max-sequence-length', type=int, required=False, default=None,
+    parser.add_argument('--max-sequence-length', type=int, required=False, default=128,
                         help="Max sequence length to fill sentence.")
     parser.add_argument('--num-processes', type=int, required=False, default=(multiprocessing.cpu_count() - 2),
                         help="Number of parallel processes to use.")
