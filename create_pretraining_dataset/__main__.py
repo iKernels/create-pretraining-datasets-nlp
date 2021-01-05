@@ -39,7 +39,7 @@ def main(args):
             config = dataset_name_splits[1]
 
         assert name in ALL_DATASET_NAMES, (
-            "dataset {name} is not available. Use `--help` to see all available datasets"
+            f"dataset {name} is not available. Use `--help` to see all available datasets"
         )
         parsed_names.append((name, config))
 
@@ -51,7 +51,7 @@ def main(args):
         "`max-sequence-length` must be None or a positive integer"
     )
 
-    assert args.limit is not None or args.limit >= 0, (
+    assert args.limit is None or args.limit >= 0, (
         "`limit` must be None or a positive integer"
     )
 
