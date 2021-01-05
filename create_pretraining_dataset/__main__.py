@@ -102,36 +102,38 @@ if __name__ == "__main__":
 
     parser = ArgumentParser("Create a tokenized dataset for pre-training")
 
-    parser.add_argument('-o', '--output-file', type=str, required=True, help="Output file path.")
-    parser.add_argument('--dataset-names', type=str, required=True, nargs='+',
-                        help="List of datasets to be parsed and built into the dataset."
-                             "Use `--dataset-names-list` for more info about available datasets."
-                             "Separate with a semicolon the specific dataset name from the config,"
-                             " for example `wikipedia:20200501.en`")
     parser.add_argument('--dataset-names-list', action="store_true", help="List available datasets.")
-    parser.add_argument('--tokenizer', required=True, type=str,  
-                        help="Name of the tokenizer to use to tokenizer the text.")
-    parser.add_argument('--max-sequence-length', type=int, required=False, default=None,
-                        help="Max sequence length to fill sentence.")
-    parser.add_argument('--num-processes', type=int, required=False, default=(multiprocessing.cpu_count() - 2),
-                        help="Number of parallel processes to use.")
-    parser.add_argument('--do-not-pad', action="store_true", help="Avoid padding to `max-sequence-length`.")
-    parser.add_argument('--limit', type=int, required=False, default=None,
-                        help='Limit number of documents in input.')
-    parser.add_argument('--compression', type=str, required=False, default='xz', choices=CompressedDictionary.ALLOWED_COMPRESSIONS,
-                        help='Compression algorithm of the output dictionary.')
-    parser.add_argument('-f', '--force-overwrite', action="store_true",
-                        help='Overwrite output file if it does already exist.')
-    parser.add_argument('--probability-random-length', default=0.05, required=False, type=float,
-                        help="Probability of creating a sample with a random length between 5 and `max_sequence_length`.")
-    parser.add_argument('--probability-single-sentence', default=0.1, required=False, type=float,
-                        help="Probability of creating a sentence with a single sentence.")
-    parser.add_argument('--probability-first-segment-over-length', default=0.5, required=False, type=float,
-                        help="Probability of creating a longer first sequence.")
-
     tmp_args, _ = parser.parse_known_args()
+
     if tmp_args.dataset_names_list:
         logging.info(f"Available datasets {ALL_DATASET_NAMES}")
     else:
+        parser.add_argument('-o', '--output-file', type=str, required=True, help="Output file path.")
+        parser.add_argument('--dataset-names', type=str, required=True, nargs='+',
+                            help="List of datasets to be parsed and built into the dataset."
+                                "Use `--dataset-names-list` for more info about available datasets."
+                                "Separate with a semicolon the specific dataset name from the config,"
+                                " for example `wikipedia:20200501.en`")
+        
+        parser.add_argument('--tokenizer', required=True, type=str,  
+                            help="Name of the tokenizer to use to tokenizer the text.")
+        parser.add_argument('--max-sequence-length', type=int, required=False, default=None,
+                            help="Max sequence length to fill sentence.")
+        parser.add_argument('--num-processes', type=int, required=False, default=(multiprocessing.cpu_count() - 2),
+                            help="Number of parallel processes to use.")
+        parser.add_argument('--do-not-pad', action="store_true", help="Avoid padding to `max-sequence-length`.")
+        parser.add_argument('--limit', type=int, required=False, default=None,
+                            help='Limit number of documents in input.')
+        parser.add_argument('--compression', type=str, required=False, default='xz', choices=CompressedDictionary.ALLOWED_COMPRESSIONS,
+                            help='Compression algorithm of the output dictionary.')
+        parser.add_argument('-f', '--force-overwrite', action="store_true",
+                            help='Overwrite output file if it does already exist.')
+        parser.add_argument('--probability-random-length', default=0.05, required=False, type=float,
+                            help="Probability of creating a sample with a random length between 5 and `max_sequence_length`.")
+        parser.add_argument('--probability-single-sentence', default=0.1, required=False, type=float,
+                            help="Probability of creating a sentence with a single sentence.")
+        parser.add_argument('--probability-first-segment-over-length', default=0.5, required=False, type=float,
+                            help="Probability of creating a longer first sequence.")
+
         args = parser.parse_args()
         main(args)
