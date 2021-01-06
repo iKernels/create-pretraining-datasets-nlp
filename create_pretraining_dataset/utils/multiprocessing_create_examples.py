@@ -133,7 +133,7 @@ class ExampleCreator(object):
 
         if not self.do_not_pad:
             input_ids += [pad_token_id] * (self.max_length - len(input_ids))
-            words_tails += [False] * (self.max_length - len(input_ids))
+            words_tails += [False] * (self.max_length - len(words_tails))
             attention_mask += [pad_token_id] * (self.max_length - len(attention_mask))
             token_type_ids += [pad_token_id] * (self.max_length - len(token_type_ids))
 
