@@ -11,7 +11,7 @@ def documents_to_sentences(documents, limit=None, total=None):
     elif total is not None:
         kwargs['total'] = total
 
-    for i, document in tqdm(enumerate(documents), desc="Splitting docs in sentences", position=3, **kwargs):
+    for i, document in tqdm(enumerate(documents), desc="Splitting docs in sentences", position=0, **kwargs):
 
         if limit is not None and i >= limit:
             break

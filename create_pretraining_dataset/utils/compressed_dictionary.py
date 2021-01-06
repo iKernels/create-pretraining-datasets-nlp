@@ -57,30 +57,22 @@ class CompressedDictionary(MutableMapping):
     @classmethod
     def from_file(cls, filepath: str, compression: str = 'xz'):
         r"""
-        If compression is None, it will try to infer it automagically.
+        Create an instance by decompressing a pickle on disk.
         """
         assert os.path.isfile(filepath), (
             f"`filepath` {filepath} is not a file"
         )
 
-        if compression is None:
-            with open(filepath, "rb") as fi:
-                return cls.asobject(fi.read())
-        else:
-            with cls.ALLOWED_COMPRESSIONS[compression].open(filepath, "rb") as fi:
-                return cls.asobject(fi.read())
+        with cls.ALLOWED_COMPRESSIONS[compression].open(filepath, "rb") as fi:
+            return cls.asobject(fi.read())
 
-    def to_file(self, filepath: str, compression: str = 'xz'):
+    def to_file(self, filepath: str):
         r"""
         Dump compressed_dictionary to file.
         """
         representation = self.asbytes()
-        if compression is None:
-            with open(filepath, "wb") as fo:
-                fo.write(representation)
-        else:
-            with self.ALLOWED_COMPRESSIONS[self.compression].open(filepath, "wb") as fo:
-                fo.write(representation)
+        with self.ALLOWED_COMPRESSIONS[self.compression].open(filepath, "wb") as fo:
+            fo.write(representation)
 
     @staticmethod
     def str2bytes(s):
@@ -90,17 +82,30 @@ class CompressedDictionary(MutableMapping):
     def bytes2str(b):
         return b.decode('utf-8')
 
-    def __getitem__(self, key: str):
-        value = self.content[key]
-        value = self.ALLOWED_COMPRESSIONS[self.compression].decompress(value)
-        value = self.__class__.bytes2str(value)
+    @classmethod
+    def __compress__(cls, value, compression: str = 'xz'):
+        value = json.dumps(value)
+        value = cls.str2bytes(value)
+        value = cls.ALLOWED_COMPRESSIONS[compression].compress(value)
+        return value
+
+    @classmethod
+    def __decompress__(cls, compressed_value, compression: str = 'xz'):
+        value = cls.ALLOWED_COMPRESSIONS[compression].decompress(compressed_value)
+        value = cls.bytes2str(value)
         value = json.loads(value)
         return value
 
+    def __getitem__(self, key: str):
+        value = self.content[key]
+        value = self.__class__.__decompress__(value, compression=self.compression)
+        return value
+
     def __setitem__(self, key: str, value: Union[Dict, List]):
-        value = json.dumps(value)
-        value = self.__class__.str2bytes(value)
-        value = self.ALLOWED_COMPRESSIONS[self.compression].compress(value)
+        value = self.__class__.__compress__(value, compression=self.compression)
+        self.content[key] = value
+    
+    def __add_already_compresses_value__(self, key: str, value: bytes):
         self.content[key] = value
 
     def __delitem__(self, key: str):

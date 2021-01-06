@@ -42,7 +42,7 @@ Available args:
 `--num-processes`: Number of parallel processes to use. Defaults to number of `#CPUs - 2`.
 - `--do-not-pad`: Do not pad examples to `max-sequence-length`.
 - `--limit`: Limit number of documents in input for each dataset.
-- `--compression`': Compression algorithm of the output dictionary. Defaults to 'xz' (lzma). Available also compression with `gzip` and `bz2`.
+- `--compression`': Compression algorithm of the output dictionary. Defaults to `bz2` (bzip2). Available also compression with `gzip` and `xz` (lzma2).
 - `-f` or `--force-overwrite`: Overwrite output file if it does already exist.
 - `--probability-random-length`: Probability of creating a sample with the first part (before the separator) having a random length between 5 and `max_sequence_length`. Defaults to `0.05`.
 - `--probability-single-sentence`: Probability of creating an example containing a single sentence. Deafults to `0.1`.

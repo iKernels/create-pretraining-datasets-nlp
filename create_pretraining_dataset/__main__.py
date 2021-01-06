@@ -1,22 +1,25 @@
+import random
+from create_pretraining_dataset.utils.reader_generator import read_dataset
 import logging
 import multiprocessing
 import os
 from argparse import ArgumentParser
 
 import datasets
-from tqdm import tqdm
 from transformers import AutoTokenizer
 
-from utils import (CompressedDictionary, create_examples,
+from create_pretraining_dataset.utils import (CompressedDictionary, multiprocessing_create_examples,
                    documents_to_sentences, multiprocessing_tokenizer,
-                   prepare_datasets)
+                   prepare_datasets, multiprocessing_addition)
 
 logging.getLogger().setLevel(logging.INFO)
 ALL_DATASET_NAMES = datasets.list_datasets()
 
 
 def main(args):
-    
+
+    random.seed(args.seed)
+
     logging.info("Doing arguments checks")
 
     assert not os.path.isfile(args.output_file) or args.force_overwrite, (
@@ -24,7 +27,7 @@ def main(args):
     )
     if os.path.isfile(args.output_file):
         os.remove(args.output_file)
-    
+
     parsed_names = []
     for dataset_name in args.dataset_names:
         name, config = None, None
@@ -68,33 +71,39 @@ def main(args):
     )
 
     final_cdictionary = CompressedDictionary()
-    global_counter = 0
-
     for name, dataset in zip(parsed_names, prepare_datasets(parsed_names=parsed_names)):
         
         logging.info(f"Processing input dataset {name} with {dataset['train'].num_rows} documents")
-        documents = dataset['train']['text']
+        documents = read_dataset(dataset)
 
         sentences = documents_to_sentences(documents, limit=args.limit, total=dataset['train'].num_rows)
+        # 6000 - 7000 it/s
 
         tokenizer_dataset_generator = multiprocessing_tokenizer(
-            sentences, tokenizer=tokenizer, num_processes=args.num_processes
+            sentences, tokenizer=tokenizer, num_processes=(args.num_processes // 2)
         )
+        # 700 - 800 it/s
 
-        examples = create_examples(
-            tokenizer,
+        examples = multiprocessing_create_examples(
             tokenizer_dataset_generator,
+            tokenizer,
             max_sequence_length=args.max_sequence_length,
             do_not_pad=args.do_not_pad,
             probability_random_length=args.probability_random_length,
             probability_single_sentence=args.probability_single_sentence,
-            probability_first_segment_over_length=args.probability_first_segment_over_length
+            probability_first_segment_over_length=args.probability_first_segment_over_length,
+            num_processes=(args.num_processes // 2)
         )
+        # 700 - 800 it/s
 
-        for example in tqdm(examples, desc="Adding samples to compressed dictionary", position=0):
-            final_cdictionary[global_counter] = example
-            global_counter += 1
+        multiprocessing_addition(
+            final_cdictionary,
+            examples,
+            num_processes=(args.num_processes // 2),
+            compression=args.compression
+        ) # 100 - 200 it/s
 
+    logging.info(f"Writing results to file {args.output_file}")
     final_cdictionary.to_file(args.output_file)
 
 
@@ -117,7 +126,7 @@ if __name__ == "__main__":
     parser.add_argument('--do-not-pad', action="store_true", help="Avoid padding to `max-sequence-length`.")
     parser.add_argument('--limit', type=int, required=False, default=None,
                         help='Limit number of documents in input.')
-    parser.add_argument('--compression', type=str, required=False, default='xz', choices=CompressedDictionary.ALLOWED_COMPRESSIONS,
+    parser.add_argument('--compression', type=str, required=False, default='bz2', choices=CompressedDictionary.ALLOWED_COMPRESSIONS,
                         help='Compression algorithm of the output dictionary.')
     parser.add_argument('-f', '--force-overwrite', action="store_true",
                         help='Overwrite output file if it does already exist.')
@@ -127,6 +136,9 @@ if __name__ == "__main__":
                         help="Probability of creating a sentence with a single sentence.")
     parser.add_argument('--probability-first-segment-over-length', default=0.5, required=False, type=float,
                         help="Probability of creating a longer first sequence.")
+
+    parser.add_argument('--seed', default=1337, required=False, type=int,
+                        help="Seed for reproducibility.")
 
     args = parser.parse_args()
     main(args)

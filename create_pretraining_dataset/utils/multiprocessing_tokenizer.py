@@ -38,11 +38,13 @@ def consumer(out_queues):
             yield res
 
 def parse_line(line: str, tokenizer: transformers.PreTrainedTokenizer):
-    res = tokenizer(line, return_attention_mask=False, return_token_type_ids=False, verbose=False)
-    res['length'] = len(res['input_ids'])
+    res = dict()
+    input_ids = tokenizer.encode(line, add_special_tokens=False, verbose=False)
+    res["input_ids"] = input_ids
+    res['length'] = len(input_ids)
     res["words_tails"] = [
         token.startswith('##')
-        for token in tokenizer.convert_ids_to_tokens(res["input_ids"], skip_special_tokens=False)
+        for token in tokenizer.convert_ids_to_tokens(input_ids, skip_special_tokens=False)
     ]
     return res
 
@@ -72,7 +74,7 @@ def multiprocessing_tokenizer(sentence_generator, tokenizer, num_processes):
     producer_thread = Thread(target=producer, args=(sentence_generator, in_queues))
     producer_thread.start()
 
-    for res in tqdm(consumer(out_queues), desc="Tokenized lines", position=2):
+    for res in tqdm(consumer(out_queues), desc="Tokenized lines", position=1):
         yield res
 
     logging.info("Waiting for processes and threads to finish")

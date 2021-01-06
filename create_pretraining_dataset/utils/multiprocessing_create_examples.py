@@ -1,9 +1,15 @@
-import random
+import logging
 import math
+import queue
+import random
+from multiprocessing import Process, Queue
+from threading import Thread
 from typing import Generator
-from tqdm import tqdm
 
+from tqdm import tqdm
 from transformers.models.auto.tokenization_auto import AutoTokenizer
+
+DUMMY_LINE = { 'input_ids': [], 'words_tails': [], 'length': 0 }
 
 
 class ExampleCreator(object):
@@ -29,26 +35,14 @@ class ExampleCreator(object):
         self.current_words_tails = []
         self.current_length = 0
 
-    def remove_special_ids(self, line):
-        res = dict()
-        res['input_ids'] = [
-            x for x in line['input_ids'] if x not in self.tokenizer.all_special_ids
-        ]
-        res['words_tails'] = [
-            t for t, x in zip(line['words_tails'], line['input_ids']) if x not in self.tokenizer.all_special_ids
-        ]
-        res['length'] = len(res['input_ids'])
-        return res
-
     def add_line(self, line):
         """ Adds a line of text to the current example being built. """
-        if line['length'] <= 2 and self.current_length > 0:  # empty lines separate docs
+        if line['length'] == 0 and self.current_length > 0:  # empty lines separate docs
             return self.create_example()
 
-        stripped_line = self.remove_special_ids(line)
-        self.current_sentences.append(stripped_line['input_ids'])
-        self.current_words_tails.append(stripped_line['words_tails'])
-        self.current_length += stripped_line['length']
+        self.current_sentences.append(line['input_ids'])
+        self.current_words_tails.append(line['words_tails'])
+        self.current_length += line['length']
 
         if self.current_length >= self.target_length:
             return self.create_example()
@@ -152,9 +146,24 @@ class ExampleCreator(object):
         return example
 
 
-def create_examples(
+def producer(examples_generator, in_queues, num_processes):
+    r""" Fill the input queue with examples taken from the generator and add a counter. """
+    i = 0
+    for example in examples_generator:
+        assert example is not None
+        in_queues[i].put(example)
+        if example['length'] == 0:
+            i = (i + 1) % num_processes
+
+    for j in range(num_processes):
+        in_queues[j].put(None)
+
+
+def worker(
     tokenizer: AutoTokenizer,
-    tokenized_sentences: Generator,
+    in_queue: Queue,
+    out_queue: Queue,
+    job_id: int,
     max_sequence_length: int = None,
     do_not_pad: bool = False,
     probability_random_length: float = 0.05,
@@ -175,12 +184,80 @@ def create_examples(
         probability_first_segment_over_length=probability_first_segment_over_length
     )
 
-    for sentence in tqdm(tokenized_sentences, desc="Creating examples", position=1):
-
+    while True:
+        sentence = in_queue.get()
+        if sentence is None:
+            example = examples_builder.add_line(DUMMY_LINE)
+            if example is not None:
+                out_queue.put(example)
+            out_queue.put(None)
+            break
+        
         example = examples_builder.add_line(sentence)
-        if example:
-            yield example
+        if example is not None:
+            out_queue.put(example)
 
-    example = examples_builder.add_line({ 'input_ids': [], 'words_tails': [], 'length': 0 })
-    if example:
-        yield example
+def consumer(out_queues, num_processes):
+    r"""
+    Read from out_queue and return elements as a generator. 
+    We use a timeout because there is the remote possibility, since the input queues are unbalanced,
+    that the producer is stuck at filling a queue while the consumer is waiting for something in some
+    other output queue. This is especially true when the queues have a max size.
+    """
+    i = 0
+    terminated = [False] * num_processes
+
+    while True:
+        if not terminated[i]:
+            try:
+                res = out_queues[i].get(timeout=1)
+                if res is None:
+                    terminated[i] = True
+                    if all(terminated):
+                        break
+                else:
+                    yield res        
+            except queue.Empty:
+                pass
+        i = (i + 1) % num_processes
+
+
+def multiprocessing_create_examples(
+    tokenized_sentences: Generator,
+    tokenizer: AutoTokenizer,
+    max_sequence_length: int = None,
+    do_not_pad: bool = False,
+    probability_random_length: float = 0.05,
+    probability_single_sentence: float = 0.1,
+    probability_first_segment_over_length: float = 0.5,
+    num_processes: int = 1
+):
+
+    in_queues = [Queue() for _ in range(num_processes)]
+    out_queues = [Queue() for _ in range(num_processes)]
+
+    workers = [
+        Process(target=worker, args=(tokenizer, in_queues[i], out_queues[i], i),
+                kwargs={
+                    'max_sequence_length': max_sequence_length,
+                    'do_not_pad': do_not_pad,
+                    'probability_random_length': probability_random_length,
+                    'probability_single_sentence': probability_single_sentence,
+                    'probability_first_segment_over_length': probability_first_segment_over_length
+                }
+        ) for i in range(num_processes)
+    ]
+
+    for w in tqdm(workers, total=num_processes, desc="Starting example workers"):
+        w.start()
+
+    producer_thread = Thread(target=producer, args=(tokenized_sentences, in_queues, num_processes))
+    producer_thread.start()
+
+    yield from tqdm(consumer(out_queues, num_processes), desc="Creating examples", position=2)
+
+    logging.info("Waiting for processes and threads to finish")
+    producer_thread.join()
+
+    for w in workers:
+        w.join()
