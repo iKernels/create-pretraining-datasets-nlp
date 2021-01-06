@@ -104,7 +104,7 @@ def main(args):
         ) # 100 - 200 it/s
 
     logging.info(f"Writing results to file {args.output_file}")
-    final_cdictionary.to_file(args.output_file)
+    final_cdictionary.dump(args.output_file)
 
 
 if __name__ == "__main__":
