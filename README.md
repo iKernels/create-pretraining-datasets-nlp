@@ -47,3 +47,44 @@ Available args:
 - `--probability-random-length`: Probability of creating a sample with the first part (before the separator) having a random length between 5 and `max_sequence_length`. Defaults to `0.05`.
 - `--probability-single-sentence`: Probability of creating an example containing a single sentence. Deafults to `0.1`.
 - `--probability-first-segment-over-length`: Probability of creating a very longer first sequence, eventually truncated. Defaults to `0.5`.
+
+## How to use
+
+Using a dataset created with the command before is very easy since it is a python dictionary with some enhancements under the hood. The only requirement is that keys must be integers (`int32`). There are two layers of compression: all values of the dictionary are individually compressed and each dump is finally compressed on disk.
+
+You can load it from the dump file and use it as in the following example.
+```python
+>>> from create_pretraining_dataset.utils import CompressedDictionary
+>>> 
+>>> d = CompressedDictionary.load("/path/to/file.bz2")
+>>> # OR
+>>> d = CompressedDictionary.load("/path/to/file.xz", compression="xz")
+>>> # OR
+>>> d = CompressedDictionary()
+>>> d[0] = {'input_ids': [1, 2, 3, 4], 'attention_mask': [1, 1, 1, 1], 'token_type_ids': [0, 0, 1, 1], 'words_tails': [True, False, True, True]}
+>>>
+>>> # use it like a normal dictionary
+>>> # remember that keys are integers (to be better compatible with pytorch dataset indexing with integers)
+>>> d[0]
+{'input_ids': [1, 2, 3, 4], 'attention_mask': [1, 1, 1, 1], 'token_type_ids': [0, 0, 1, 1], 'words_tails': [True, False, True, True]}
+>>>
+>>> for k in d.keys():
+>>>     # do something with d[k]
+>>> # OR
+>>> for k, value in d.items():
+>>>     print(k, value) # print millions of entries is not always a good idea...
+>>>
+>>> # delete an entry
+>>> del d[0]
+>>>
+>>> # get number of key-value pairs
+>>> len(d)
+1
+>>>
+>>> # access compressed data directly
+>>> d.content[0]
+b"3hbwuchbufbou&RFYUVGBKYU6T76\x00\x00" # some compressed byte array corresponding to the d[0] value
+>>>
+>>> # save the dict
+>>> d.dump("/path/to/new/dump.bz2") # no compression argument. the compression is the same used for values.
+```
