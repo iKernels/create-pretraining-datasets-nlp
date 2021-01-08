@@ -82,9 +82,23 @@ You can load it from the dump file and use it as in the following example.
 1
 >>>
 >>> # access compressed data directly
->>> d.content[0]
+>>> d._content[0]
 b"3hbwuchbufbou&RFYUVGBKYU6T76\x00\x00" # some compressed byte array corresponding to the d[0] value
 >>>
 >>> # save the dict
 >>> d.dump("/path/to/new/dump.bz2") # no compression argument. the compression is the same used for values.
+>>>
+>>> # split the dict in a set of smaller ones
+>>> d.update((i, d[0]) for i in range(5))
+>>> res = d.split(parts=2, reset_keys=True, drop_last=False, shuffle=True) # split are returned as a generator
+>>> list(next(res).items())
+[(0, {'input_ids': [1, 2, 3, 4], 'attention_mask': [1, 1, 1, 1], 'token_type_ids': [0, 0, 1, 1], 'words_tails': [True, False, True, True]}), (1, {'input_ids': [1, 2, 3, 4], 'attention_mask': [1, 1, 1, 1], 'token_type_ids': [0, 0, 1, 1], 'words_tails': [True, False, True, True]}), (2, {'input_ids': [1, 2, 3, 4], 'attention_mask': [1, 1, 1, 1], 'token_type_ids': [0, 0, 1, 1], 'words_tails': [True, False, True, True]})]
+>>>
+>>> list(next(res).items())
+[(0, {'input_ids': [1, 2, 3, 4], 'attention_mask': [1, 1, 1, 1], 'token_type_ids': [0, 0, 1, 1], 'words_tails': [True, False, True, True]}), (1, {'input_ids': [1, 2, 3, 4], 'attention_mask': [1, 1, 1, 1], 'token_type_ids': [0, 0, 1, 1], 'words_tails': [True, False, True, True]})]
+>>>
+>>> list(next(res).items())
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+StopIteration
 ```
