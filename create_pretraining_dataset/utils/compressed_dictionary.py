@@ -1,8 +1,10 @@
 import os
+import sys
 import math
 import lzma
 import bz2
 import gzip
+import random
 from collections.abc import MutableMapping
 from struct import pack, unpack
 
@@ -12,14 +14,17 @@ from typing import Dict, List, Union
 
 class CompressedDictionary(MutableMapping):
     r"""
-    A dictionary where every value is compressed. Values can be dictionaries, lists or strings.
+    A dictionary where every value is compressed. Values can be dictionaries, lists or strings
+    (in particular values can be something that could be parsed by `json.dumps`).
     Contains also primitives to be dumped to file and restored from a file.
 
     This dictionary is multithread-safe and can be easily used with multiple thread calling both get and set.
 
     Performance:
-    - Compression of about 225 entries / second. Tested with values equal to strings with an average length of 2000 characters each.
-    - Decompression of about 2000 entries / second. Entries are the one compressed above. 
+    - Compression of about 225 entries / second.
+        Tested with values equal to strings with an average length of 2000 characters each.
+        This dictionary supports multithreading, with which many values can be assigned concurrently to improve performance.
+    - Decompression of about 10000 entries / second on a laptop. Entries are the one compressed above. 
 
     Args:
         compression: compression algorithm, one between `xz`, `gzip` and `bz2`. Defaults to `bz2`.
@@ -27,8 +32,8 @@ class CompressedDictionary(MutableMapping):
     Example:
     >>> d = CompressedDictionary()
     >>> d['0'] = 'this is a string!"
-    >>> d.to_file('file.bz2')
-    >>> a = CompressedDictionary.from_file('file.bz2')
+    >>> d.dump('file.bz2')
+    >>> a = CompressedDictionary.load('file.bz2')
     >>> a == d
     True
     """
@@ -192,9 +197,20 @@ class CompressedDictionary(MutableMapping):
 
     def __eq__(self, o: object):
         return super().__eq__(o) and (self.compression == o.compression)
+    
+    @staticmethod
+    def combine(*dictionaries):
+        r""" Combine together multiple dictionaries using the same compression algorithm. """
 
-    def __str__(self):
-        return f"<CompressedDictionary object at {hash(self)}>"
+        if not dictionaries:
+            raise ValueError(
+                "`combine` must be called with at least a dictionary"
+            )
+
+        res = dictionaries[0]
+        for d in dictionaries[1:]:
+            res.import_from_other(d)
+        return res
 
     def merge(self, other, shift_keys=True):
         r"""
@@ -202,7 +218,11 @@ class CompressedDictionary(MutableMapping):
         duplicated keys will be shifter in `other` to free positions. Otherwise,
         an error is raised.
         Dictionaries must use the same `compression` algorithm.
+
+        Return:
+            a new dictionary with values of both `self` and `other`
         """
+        
         if self.compression != other.compression:
             raise ValueError(
                 f"`other` must use the same `compression` algorithm as `self`"
@@ -249,6 +269,88 @@ class CompressedDictionary(MutableMapping):
             else:
                 self.__add_already_compresses_value__(key, other.__get_without_decompress_value__(key))
 
+    def get_values_size(self): 
+        r""" Return approximate total values size (compressed). """
+        return sum([sys.getsizeof(value) for value in self.values()])
+    
+    def get_keys_size(self): 
+        r""" Return approximate total keys size. """
+        return sum([sys.getsizeof(key) for key in self.keys()])
+
+    def shuffle(self):
+        r"""
+        In-place shuffling of values.
+        After the shuffling, each key will have a different value chosen randomly among
+        the others. This is a permutation, no value is deleted or duplicated.
+        """
+        shuffled_keys = list(self.keys())
+        random.shuffle(shuffled_keys)
+        self._tmp_content = dict()
+
+        for k1, k2 in zip(self.keys(), shuffled_keys):
+            self._tmp_content[k1] = self._content[k2]
+
+        self._content = self._tmp_content
+        del self._tmp_content
+    
+    def split(
+        self,
+        parts: int = None,
+        parts_length: int = None,
+        drop_last: bool = False,
+        reset_keys: bool = False,
+        shuffle: bool = False
+    ):
+        r"""
+        Split the dictionary in many sub-dictionaries.
+        `parts` and `parts_length` arguments are mutually exlusive. They cannot be
+        both defined or both undefined at the same time. The algorithm works on keys and only at the
+        end divides values into the different resulting dictionaries, without doing compression/decompression.
+        The maximal difference in size among the returned dictionaries is `1`.
+
+        Args:
+            parts int: number of parts in which the dict should be divided into.
+            parts_length int: split the dictionary in parts with a length equal to `parts_length`.
+            drop_last bool: whether to drop the possible last smaller dictionary when using `parts_length`.
+            reset_keys bool: whether to reset keys starting from `0` in the new dictionaries.
+            shuffle bool: whether to shuffle the dataset before the split.
+
+        Return:
+            a generator of smaller CompressedDictionaries with same compression algorithm as the original.
+
+        Example:
+            >>> d = CompressedDictionary()
+            >>> d.update([(i, i) for i in range(17)])
+            >>> d_1, d_2 = d.split(parts=2, shuffle=True, reset_keys=True)
+            >>> list(d_1.items())
+            [(0, 0), (1, 10), (2, 15), (3, 12), (4, 2), (5, 7), (6, 3), (7, 1), (8, 4)]
+            >>> list(d_2.items())
+            [(0, 8), (1, 13), (2, 14), (3, 11), (4, 5), (5, 6), (6, 9), (7, 16)]
+        """
+
+        if (parts is None) == (parts_length is None):
+            raise ValueError(
+                "only one argument among `parts` and `parts_length` can be defined"
+            )
+
+        if parts is None:
+            parts = math.ceil(len(self) / parts_length)
+
+        if shuffle:
+            self.shuffle()
+
+        all_keys = list(self.keys())
+        k, m = divmod(len(all_keys), parts)
+
+        split_keys = [all_keys[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(parts)]
+        if len(split_keys) > 1 and len(split_keys[0]) > len(split_keys[-1]) and drop_last:
+            split_keys.pop()
+
+        for keys in split_keys:
+            new_compressed_dictionary = CompressedDictionary(compression=self.compression)
+            for i, k in enumerate(keys):
+                new_compressed_dictionary.__add_already_compresses_value__(i if reset_keys else k, self.__get_without_decompress_value__(k))
+            yield new_compressed_dictionary
 
 
 if __name__ == "__main__":
@@ -289,7 +391,7 @@ if __name__ == "__main__":
         return res
 
     # testing save/reload
-    for i in range(1000):
+    for i in range(100):
         
         dd = CompressedDictionary()
         for i in range(10):
@@ -309,3 +411,13 @@ if __name__ == "__main__":
 
         dd = dd.merge(dd, shift_keys=True)
         dd.import_from_other(dd, shift_keys=True)
+    
+    os.remove('tmp.bz2')
+
+    # test shuffle and splitting
+    for i in range(10):
+        dd = CompressedDictionary()
+        dd.update(((i, i) for i in range(20)))
+
+        res = dd.split(parts=random.randint(1, 5), reset_keys=False, drop_last=False, shuffle=False)
+        assert CompressedDictionary.combine(*list(res)) == dd
