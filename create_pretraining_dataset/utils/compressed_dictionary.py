@@ -411,6 +411,8 @@ if __name__ == "__main__":
 
         dd = dd.merge(dd, shift_keys=True)
         dd.import_from_other(dd, shift_keys=True)
+    
+    os.remove('tmp.bz2')
 
     # test shuffle and splitting
     for i in range(10):
