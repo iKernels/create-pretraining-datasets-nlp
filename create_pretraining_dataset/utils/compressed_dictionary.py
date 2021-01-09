@@ -271,11 +271,11 @@ class CompressedDictionary(MutableMapping):
 
     def get_values_size(self): 
         r""" Return approximate total values size (compressed). """
-        return sum([sys.getsizeof(value) for value in self.values()])
-    
+        return sum(sys.getsizeof(value) for value in self.values())
+
     def get_keys_size(self): 
         r""" Return approximate total keys size. """
-        return sum([sys.getsizeof(key) for key in self.keys()])
+        return sum(sys.getsizeof(key) for key in self.keys())
 
     def shuffle(self):
         r"""
