@@ -72,7 +72,7 @@ def main(args):
     final_cdictionary = CompressedDictionary()
     for name, dataset in zip(parsed_names, prepare_datasets(parsed_names=parsed_names)):
         
-        logging.info(f"Processing input dataset {name} with {dataset['train'].num_rows} documents")
+        logging.info(f"Processing input dataset {name} with {dataset['train'].num_rows} {'documents' if args.dataset_structure is MODES[0] else 'sentences'}")
 
         sentences = dataset_to_sentences(
             dataset,
@@ -142,7 +142,7 @@ if __name__ == "__main__":
     parser.add_argument('--dataset-structure', default='one-doc-per-line', required=False, type=str,
                         choices=MODES,
                         help="Probability of creating a longer first sequence.")
-    parser.add_argument('--sentences-per-doc', default=100, required=False, type=int,
+    parser.add_argument('--sentences-per-doc', default=None, required=False, type=int,
                         help="If no empty line is found to separate documents when using `one-sentence-per-line`, use this maximal length (in number of sentences).")
     parser.add_argument('--seed', default=1337, required=False, type=int,
                         help="Seed for reproducibility.")

@@ -48,26 +48,38 @@ Available args:
 - `--probability-single-sentence`: Probability of creating an example containing a single sentence. Deafults to `0.1`.
 - `--probability-first-segment-over-length`: Probability of creating a very longer first sequence, eventually truncated. Defaults to `0.5`. 
 - `--dataset-structure`: How the dataset is structured. At the moment is provided support for `one-doc-per-line` and `one-sentence-per-line`. 
-- `--sentences-per-doc`: Collect at most this number of sentences in one document when using `--dataset-structure=one-sentence-per-line`. This will apply in parallel with splitting of documents on empty lines. Defaults to `100`.
+- `--sentences-per-doc`: Collect at most this number of sentences in one document when using `--dataset-structure=one-sentence-per-line`. This will apply in parallel with splitting of documents on empty lines. Defaults to `None`, that is, use empty lines as documents separators. Be aware that some datasets like `bookcorpus` do not contain documents separators like empty lines.
 - `--seed`: Set seed for reproducibility.
 
-## Examples
+## Useful examples
 
-- Create wikipedia dataset pretokenized with the bert tokenizer `bert-base-cased`.
+### Wikipedia
+
+- Create wikipedia dataset pretokenized with the bert tokenizer `bert-base-cased` with a maximal sequence length of `128`:
 ```bash
 python -m create_pretraining_dataset --compression bz2 \
     --output-file wikipedia-bert-cased-128-example.bz2 \
     --dataset-names wikipedia:20200501.en \
     --tokenizer bert-base-cased \
-    --max-sequence-length 128 --num-processes 16 --limit 100
+    --max-sequence-length 128 --num-processes 16
+```
+- Same but with a maximal sequence length of `512`:
+```bash
+python -m create_pretraining_dataset --compression bz2 \
+    --output-file wikipedia-bert-cased-512-example.bz2 \
+    --dataset-names wikipedia:20200501.en \
+    --tokenizer bert-base-cased \
+    --max-sequence-length 512 --num-processes 16
 ```
 
-- Create openwebtext dataset pretokenized with the bert tokenizer `bert-base-cased` *without* padding.
+### OpenWebText
+
+- Create openwebtext dataset pretokenized with the bert tokenizer `bert-base-cased`.
 ```bash
 python -m create_pretraining_dataset --compression bz2 \
     --output-file openwebtext-bert-cased-128-example.bz2 \
     --dataset-names openwebtext \
-    --tokenizer bert-base-cased --do-not-pad \
+    --tokenizer bert-base-cased \
     --max-sequence-length 128 --num-processes 16 --limit 200
 ```
 

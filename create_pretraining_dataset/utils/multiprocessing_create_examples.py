@@ -7,9 +7,73 @@ from threading import Thread
 from typing import Generator
 
 from tqdm import tqdm
-from transformers.models.auto.tokenization_auto import AutoTokenizer
+from transformers import (
+    AutoTokenizer,
+    BertTokenizer, BertTokenizerFast,
+    RobertaTokenizer, RobertaTokenizerFast,
+    XLNetTokenizer, XLNetTokenizerFast,
+    GPT2Tokenizer, GPT2TokenizerFast,
+    ElectraTokenizer, ElectraTokenizerFast
+)
 
 DUMMY_LINE = { 'input_ids': [], 'words_tails': [], 'length': 0 }
+
+
+class SpecialTokensMap:
+    r""" Parse a tokenizer and set all the common attrbutes. """
+
+    start_id: int
+    separator_id: int
+    end_id: int
+    pad_id: int
+    padding_side: str
+    use_token_types: bool
+
+    def __init__(self, tokenizer):
+
+        if isinstance(
+            tokenizer, (BertTokenizer, BertTokenizerFast, ElectraTokenizer, ElectraTokenizerFast)
+        ):
+            self.set_tokenizer_parameters(
+                start_id=tokenizer.cls_token_id,
+                separator_id=tokenizer.sep_token_id,
+                end_id=tokenizer.sep_token_id,
+                pad_id=tokenizer.pad_token_id,
+                padding_side=tokenizer.padding_side,
+                use_token_types=True
+            )
+
+        elif isinstance(tokenizer, (RobertaTokenizer, RobertaTokenizerFast)):
+            self.set_tokenizer_parameters(
+                start_id=tokenizer.bos_token_id,
+                separator_id=tokenizer.sep_token_id,
+                end_id=tokenizer.eos_token_id,
+                pad_id=tokenizer.pad_token_id,
+                padding_side=tokenizer.padding_side,
+                use_token_types=False
+            )
+
+        elif isinstance(tokenizer, (XLNetTokenizer, XLNetTokenizerFast)):
+            raise NotImplementedError("This tokenizer is not supported yet")
+
+        elif isinstance(tokenizer, (GPT2Tokenizer, GPT2TokenizerFast)):
+            raise NotImplementedError("This tokenizer is not supported yet")
+
+    def set_tokenizer_parameters(
+        self,
+        start_id: int,
+        separator_id: int,
+        end_id: int,
+        pad_id: int,
+        padding_side: str,
+        use_token_types: bool
+    ):
+        self.start_id = start_id
+        self.separator_id = separator_id
+        self.end_id = end_id
+        self.pad_id = pad_id
+        self.padding_side = padding_side
+        self.use_token_types = use_token_types
 
 
 class ExampleCreator(object):
@@ -24,6 +88,7 @@ class ExampleCreator(object):
         probability_first_segment_over_length,
     ):
         self.tokenizer = tokenizer
+        self.special_tokens_map = SpecialTokensMap(tokenizer=tokenizer)
         self.probability_single_sentence = probability_single_sentence
         self.probability_random_length = probability_random_length
         self.probability_first_segment_over_lengt = probability_first_segment_over_length
@@ -116,33 +181,48 @@ class ExampleCreator(object):
     ):
         f""" Converts two "segments" of text into an example. """
 
-        cls_token_id = self.tokenizer.cls_token_id
-        sep_token_id = self.tokenizer.sep_token_id
-        pad_token_id = self.tokenizer.pad_token_id
-
-        input_ids = [cls_token_id] + first_segment + [sep_token_id]
-        words_tails = [False] + first_words_tails + [False]
+        # [start] + sentence
+        input_ids = [self.special_tokens_map.start_id] + first_segment
+        words_tails = [False] + first_words_tails
         token_type_ids = [0] * len(input_ids)
 
         if second_segment:
-            input_ids += second_segment + [sep_token_id]
-            words_tails += second_words_tails + [False]
+            # possibly add [SEP] + second sentence
+            input_ids += [self.special_tokens_map.separator_id] + second_segment
+            words_tails += [False] + second_words_tails
             token_type_ids += [1] * (len(second_segment) + 1)
 
+        # add final tokens
+        input_ids += [self.special_tokens_map.end_id]
+        words_tails += [False]
+        token_type_ids += [1]
+        
         attention_mask = [1] * len(input_ids)
 
+        # pad either on left or right side
         if not self.do_not_pad:
-            input_ids += [pad_token_id] * (self.max_length - len(input_ids))
-            words_tails += [False] * (self.max_length - len(words_tails))
-            attention_mask += [pad_token_id] * (self.max_length - len(attention_mask))
-            token_type_ids += [pad_token_id] * (self.max_length - len(token_type_ids))
+
+            # pad either on left or right side
+            if self.special_tokens_map.padding_side == 'right':
+                input_ids += [self.special_tokens_map.pad_id] * (self.max_length - len(input_ids))
+                words_tails += [False] * (self.max_length - len(words_tails))
+                attention_mask += [0] * (self.max_length - len(attention_mask))
+                token_type_ids += [0] * (self.max_length - len(token_type_ids))
+            else:
+                input_ids = [self.special_tokens_map.pad_id] * (self.max_length - len(input_ids)) + input_ids
+                words_tails = [False] * (self.max_length - len(words_tails)) + words_tails
+                attention_mask = [0] * (self.max_length - len(attention_mask)) + attention_mask
+                token_type_ids = [0] * (self.max_length - len(token_type_ids)) + token_type_ids
 
         example = {
             "input_ids": input_ids,
             "attention_mask": attention_mask,
-            "token_type_ids": token_type_ids,
             "words_tails": words_tails
         }
+
+        if self.special_tokens_map.use_token_types:
+            example["token_type_ids"] = token_type_ids
+
         return example
 
 

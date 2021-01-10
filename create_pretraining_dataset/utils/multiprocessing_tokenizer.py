@@ -3,9 +3,46 @@ from threading import Thread
 from multiprocessing import Queue, Process
 
 import transformers
+from transformers import (
+    BertTokenizer, BertTokenizerFast, ElectraTokenizer, ElectraTokenizerFast,
+    RobertaTokenizer, RobertaTokenizerFast, XLNetTokenizer, XLNetTokenizerFast,
+    GPT2Tokenizer, GPT2TokenizerFast
+)
 from tqdm import tqdm
 
 logging.getLogger().setLevel(logging.INFO)
+
+
+
+def bert_word_tails(tokenizer, ids):
+    return [
+        token.startswith('##') for token in tokenizer.convert_ids_to_tokens(ids, skip_special_tokens=False)
+    ]
+
+def roberta_words_tails(tokenizer, ids):
+    return [False] * len(ids)
+
+def gpt_words_tails(tokenizer, ids):
+    raise NotImplementedError("This tokenizer is not supported yet")
+
+def xlnet_words_tails(tokenizer, ids):
+    raise NotImplementedError("This tokenizer is not supported yet")
+
+def get_words_tails(tokenizer, ids):
+    r""" Return words tails built in the right way based on model type. """
+    if isinstance(
+        tokenizer, (BertTokenizer, BertTokenizerFast, ElectraTokenizer, ElectraTokenizerFast)
+    ):
+        return bert_word_tails(tokenizer, ids)
+
+    elif isinstance(tokenizer, (RobertaTokenizer, RobertaTokenizerFast)):
+        return roberta_words_tails(tokenizer, ids)
+
+    elif isinstance(tokenizer, (XLNetTokenizer, XLNetTokenizerFast)):
+        return xlnet_words_tails(tokenizer, ids)
+
+    elif isinstance(tokenizer, (GPT2Tokenizer, GPT2TokenizerFast)):
+        return gpt_words_tails(tokenizer, ids)
 
 
 def producer(sentence_generator, in_queues):
@@ -42,10 +79,7 @@ def parse_line(line: str, tokenizer: transformers.PreTrainedTokenizer):
     input_ids = tokenizer.encode(line, add_special_tokens=False, verbose=False)
     res["input_ids"] = input_ids
     res['length'] = len(input_ids)
-    res["words_tails"] = [
-        token.startswith('##')
-        for token in tokenizer.convert_ids_to_tokens(input_ids, skip_special_tokens=False)
-    ]
+    res["words_tails"] = get_words_tails(tokenizer, input_ids)
     return res
 
 def worker(in_queue, out_queue, tokenizer):
