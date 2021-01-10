@@ -24,6 +24,8 @@ def read_dataset(dataset, mode=MODES[0], limit=None):
             else:
                 document += text
                 accumulated += 1
+        if document:
+            yield document
 
     else:
         raise ValueError(
