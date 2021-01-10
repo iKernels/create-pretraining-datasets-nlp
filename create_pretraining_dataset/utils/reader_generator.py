@@ -16,14 +16,15 @@ def read_dataset(dataset, mode=MODES[0], limit=None):
         accumulated = 0
         document = ""
         for line in dataset['train']:
-            if not line.strip() or accumulated >= limit:
+            text = line['text']
+            if not text.strip() or accumulated >= limit:
                 yield document
                 accumulated = 0
                 document = ""
             else:
-                document += line['text']
+                document += text
                 accumulated += 1
-    
+
     else:
         raise ValueError(
             f"mode {mode} not available"
