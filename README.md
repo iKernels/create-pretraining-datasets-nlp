@@ -46,9 +46,35 @@ Available args:
 - `-f` or `--force-overwrite`: Overwrite output file if it does already exist.
 - `--probability-random-length`: Probability of creating a sample with the first part (before the separator) having a random length between 5 and `max_sequence_length`. Defaults to `0.05`.
 - `--probability-single-sentence`: Probability of creating an example containing a single sentence. Deafults to `0.1`.
-- `--probability-first-segment-over-length`: Probability of creating a very longer first sequence, eventually truncated. Defaults to `0.5`.
+- `--probability-first-segment-over-length`: Probability of creating a very longer first sequence, eventually truncated. Defaults to `0.5`. 
+- `--dataset-structure`: How the dataset is structured. At the moment is provided support for `one-doc-per-line` and `one-sentence-per-line`. 
+- `--sentences-per-doc`: Collect at most this number of sentences in one document when using `--dataset-structure=one-sentence-per-line`. This will apply in parallel with splitting of documents on empty lines. Defaults to `100`.
+- `--seed`: Set seed for reproducibility.
 
-## How to use
+## Examples
+
+- Create wikipedia dataset pretokenized with the bert tokenizer `bert-base-cased`.
+```bash
+python -m create_pretraining_dataset --compression bz2 \
+    --output-file wikipedia-bert-cased-128-example.bz2 \
+    --dataset-names wikipedia:20200501.en \
+    --tokenizer bert-base-cased \
+    --max-sequence-length 128 --num-processes 16 --limit 100
+```
+
+- Create openwebtext dataset pretokenized with the bert tokenizer `bert-base-cased` *without* padding.
+```bash
+python -m create_pretraining_dataset --compression bz2 \
+    --output-file openwebtext-bert-cased-128-example.bz2 \
+    --dataset-names openwebtext \
+    --tokenizer bert-base-cased --do-not-pad \
+    --max-sequence-length 128 --num-processes 16 --limit 200
+```
+
+
+
+
+## How to use the `CompressedDictionary`
 
 Using a dataset created with the command before is very easy since it is a python dictionary with some enhancements under the hood. The only requirement is that keys must be integers (`int32`). There are two layers of compression: all values of the dictionary are individually compressed and each dump is finally compressed on disk.
 

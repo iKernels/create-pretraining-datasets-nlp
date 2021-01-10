@@ -1,5 +1,4 @@
 import random
-from create_pretraining_dataset.utils.reader_generator import read_dataset, MODES
 import logging
 import multiprocessing
 import os
@@ -9,7 +8,7 @@ import datasets
 from transformers import AutoTokenizer
 
 from create_pretraining_dataset.utils import (CompressedDictionary, multiprocessing_create_examples,
-                   documents_to_sentences, multiprocessing_tokenizer,
+                   dataset_to_sentences, multiprocessing_tokenizer, MODES,
                    prepare_datasets, multiprocessing_addition)
 
 logging.getLogger().setLevel(logging.INFO)
@@ -70,17 +69,17 @@ def main(args):
         "`probability-first-segment-over-length` must be None or a positive integer"
     )
 
-    assert args.limit_in_one_sentence_per_line is None or args.dataset_structure == 'one-sentence-per-line', (
-        f"argument `limit-in-one-sentence-per-line` can be only defined with `dataset-structure=one-sentence-per-line`"
-    )
-
     final_cdictionary = CompressedDictionary()
     for name, dataset in zip(parsed_names, prepare_datasets(parsed_names=parsed_names)):
         
         logging.info(f"Processing input dataset {name} with {dataset['train'].num_rows} documents")
-        documents = read_dataset(dataset, mode=args.dataset_structure, limit=args.limit_in_one_sentence_per_line)
 
-        sentences = documents_to_sentences(documents, limit=args.limit, total=dataset['train'].num_rows)
+        sentences = dataset_to_sentences(
+            dataset,
+            limit=args.limit,
+            mode=args.dataset_structure,
+            limit_sentences_per_doc=args.sentences_per_doc
+        )
         # 6000 - 7000 it/s with 8 threads
 
         tokenizer_dataset_generator = multiprocessing_tokenizer(
@@ -143,8 +142,8 @@ if __name__ == "__main__":
     parser.add_argument('--dataset-structure', default='one-doc-per-line', required=False, type=str,
                         choices=MODES,
                         help="Probability of creating a longer first sequence.")
-    parser.add_argument('--limit-in-one-sentence-per-line', default=10000, required=False, type=int,
-                        help="If no empty line is found to separate documents when using `one-sentence-per-line`, use this maximal length.")
+    parser.add_argument('--sentences-per-doc', default=100, required=False, type=int,
+                        help="If no empty line is found to separate documents when using `one-sentence-per-line`, use this maximal length (in number of sentences).")
     parser.add_argument('--seed', default=1337, required=False, type=int,
                         help="Seed for reproducibility.")
 
