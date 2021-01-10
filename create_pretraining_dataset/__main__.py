@@ -1,6 +1,5 @@
 import random
-from create_pretraining_dataset.utils import reader_generator
-from create_pretraining_dataset.utils.reader_generator import read_dataset
+from create_pretraining_dataset.utils.reader_generator import read_dataset, MODES
 import logging
 import multiprocessing
 import os
@@ -142,7 +141,7 @@ if __name__ == "__main__":
     parser.add_argument('--probability-first-segment-over-length', default=0.5, required=False, type=float,
                         help="Probability of creating a longer first sequence.")
     parser.add_argument('--dataset-structure', default='one-doc-per-line', required=False, type=str,
-                        choices=reader_generator.MODES,
+                        choices=MODES,
                         help="Probability of creating a longer first sequence.")
     parser.add_argument('--limit-in-one-sentence-per-line', default=10000, required=False, type=int,
                         help="If no empty line is found to separate documents when using `one-sentence-per-line`, use this maximal length.")
