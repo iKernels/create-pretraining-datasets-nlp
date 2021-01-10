@@ -122,7 +122,14 @@ class CompressedDictionary(MutableMapping):
         )
 
         res = CompressedDictionary()
-        with cls.ALLOWED_COMPRESSIONS[compression].open(filepath, "rb") as fi:
+        
+        # file might be already decompressed
+        if compression is None:
+            open_fn = open
+        else:
+            open_fn = cls.ALLOWED_COMPRESSIONS[compression].open
+        
+        with open_fn(filepath, "rb") as fi:
             # read and set arguments
             arguments = json.loads(cls.bytes2str(cls.read_line(fi)))
             for key, value in arguments.items():
