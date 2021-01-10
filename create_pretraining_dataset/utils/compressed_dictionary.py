@@ -127,9 +127,9 @@ class CompressedDictionary(MutableMapping):
         if compression is None:
             open_fn = open
         else:
-            open_rn = cls.ALLOWED_COMPRESSIONS[compression].open
+            open_fn = cls.ALLOWED_COMPRESSIONS[compression].open
         
-        with open_rn(filepath, "rb") as fi:
+        with open_fn(filepath, "rb") as fi:
             # read and set arguments
             arguments = json.loads(cls.bytes2str(cls.read_line(fi)))
             for key, value in arguments.items():
