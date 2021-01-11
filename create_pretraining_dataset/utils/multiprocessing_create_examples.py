@@ -272,7 +272,7 @@ def worker(
                 out_queue.put(example)
             out_queue.put(None)
             break
-        
+
         example = examples_builder.add_line(sentence)
         if example is not None:
             out_queue.put(example)

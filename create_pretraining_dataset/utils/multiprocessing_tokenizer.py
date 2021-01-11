@@ -20,7 +20,10 @@ def bert_word_tails(tokenizer, ids):
     ]
 
 def roberta_words_tails(tokenizer, ids):
-    return [False] * len(ids)
+    return [
+        (not token.startswith('Ġ')) and (token not in tokenizer.all_special_tokens) and (i != 1)
+        for i, token in enumerate(tokenizer.convert_ids_to_tokens(ids, skip_special_tokens=False))
+    ]
 
 def gpt_words_tails(tokenizer, ids):
     raise NotImplementedError("This tokenizer is not supported yet")
