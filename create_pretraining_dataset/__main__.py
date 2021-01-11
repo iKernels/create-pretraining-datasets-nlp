@@ -7,9 +7,9 @@ from argparse import ArgumentParser
 import datasets
 from transformers import AutoTokenizer
 
-from create_pretraining_dataset.utils import (CompressedDictionary, multiprocessing_create_examples,
-                   dataset_to_sentences, multiprocessing_tokenizer, MODES,
-                   prepare_datasets, multiprocessing_addition)
+from create_pretraining_dataset.utils import (multiprocessing_create_examples,
+                   dataset_to_sentences, MODES, multiprocessing_addition)
+from compressed_dictionary import CompressedDictionary
 
 logging.getLogger().setLevel(logging.INFO)
 ALL_DATASET_NAMES = datasets.list_datasets()
@@ -70,8 +70,11 @@ def main(args):
     )
 
     final_cdictionary = CompressedDictionary()
-    for name, dataset in zip(parsed_names, prepare_datasets(parsed_names=parsed_names)):
-        
+    
+    for name, config in parsed_names:     
+
+        logging.info(f"Loading input dataset {name}")   
+        dataset = datasets.load_dataset(name, config)
         logging.info(f"Processing input dataset {name} with {dataset['train'].num_rows} {'documents' if args.dataset_structure is MODES[0] else 'sentences'}")
 
         sentences = dataset_to_sentences(
@@ -82,27 +85,23 @@ def main(args):
         )
         # 6000 - 7000 it/s with 8 threads
 
-        tokenizer_dataset_generator = multiprocessing_tokenizer(
-            sentences, tokenizer=tokenizer, num_processes=(args.num_processes // 2)
-        )
-        # 700 - 800 it/s with 8 threads
-
         examples = multiprocessing_create_examples(
-            tokenizer_dataset_generator,
+            sentences,
             tokenizer,
             max_sequence_length=args.max_sequence_length,
             do_not_pad=args.do_not_pad,
+            add_words_tails=args.compute_words_tails,
             probability_random_length=args.probability_random_length,
             probability_single_sentence=args.probability_single_sentence,
             probability_first_segment_over_length=args.probability_first_segment_over_length,
-            num_processes=(args.num_processes // 2)
+            num_processes=max(args.num_processes * 2 // 3, 1)
         )
         # 700 - 800 it/s with 8 threads
 
         multiprocessing_addition(
             final_cdictionary,
             examples,
-            num_processes=(args.num_processes // 2),
+            num_processes=max(args.num_processes // 3, 1),
             compression=args.compression
         ) # 500 - 600 it/s with 8 threads
 
@@ -119,12 +118,11 @@ if __name__ == "__main__":
                         help=f"List of datasets to be parsed and built into the dataset."
                              f" Separate with a semicolon the specific dataset name from the config,"
                              f" for example `wikipedia:20200501.en`. Available datasets {ALL_DATASET_NAMES}")
-    
     parser.add_argument('--tokenizer', required=True, type=str,  
                         help="Name of the tokenizer to use to tokenizer the text.")
-    parser.add_argument('--max-sequence-length', type=int, required=False, default=128,
+    parser.add_argument('--max-sequence-length', type=int, required=True,
                         help="Max sequence length to fill sentence.")
-    parser.add_argument('--num-processes', type=int, required=False, default=(multiprocessing.cpu_count() - 2),
+    parser.add_argument('--num-processes', type=int, required=False, default=multiprocessing.cpu_count(),
                         help="Number of parallel processes to use.")
     parser.add_argument('--do-not-pad', action="store_true", help="Avoid padding to `max-sequence-length`.")
     parser.add_argument('--limit', type=int, required=False, default=None,
@@ -144,6 +142,8 @@ if __name__ == "__main__":
                         help="Probability of creating a longer first sequence.")
     parser.add_argument('--sentences-per-doc', default=None, required=False, type=int,
                         help="If no empty line is found to separate documents when using `one-sentence-per-line`, use this maximal length (in number of sentences).")
+    parser.add_argument('--compute-words-tails', action="store_true",
+                        help="Words tails in an additional array in which True mean that the corresponding token is part of a composed word and is not the first. This array helps in creating whole word masks.")
     parser.add_argument('--seed', default=1337, required=False, type=int,
                         help="Seed for reproducibility.")
 
