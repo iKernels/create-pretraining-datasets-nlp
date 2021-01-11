@@ -1,6 +1,7 @@
 # create-pretraining-datasets-nlp
 Create large pre-training datasets for NLP
 
+
 ## Install
 
 Install with pip
@@ -8,6 +9,12 @@ Install with pip
 ```bash
 pip install git+https://github.com/iKernels/create-pretraining-datasets-nlp.git --upgrade
 ```
+
+install also `compressed-dictionary` library
+```bash
+pip install git+https://github.com/lucadiliello/compressed-dictionary.git --upgrade
+```
+
 
 ## Usage
 
@@ -48,14 +55,16 @@ Available args:
 - `--probability-single-sentence`: Probability of creating an example containing a single sentence. Deafults to `0.1`.
 - `--probability-first-segment-over-length`: Probability of creating a very longer first sequence, eventually truncated. Defaults to `0.5`. 
 - `--dataset-structure`: How the dataset is structured. At the moment is provided support for `one-doc-per-line` and `one-sentence-per-line`. 
-- `--sentences-per-doc`: Collect at most this number of sentences in one document when using `--dataset-structure=one-sentence-per-line`. This will apply in parallel with splitting of documents on empty lines. Defaults to `None`, that is, use empty lines as documents separators. Be aware that some datasets like `bookcorpus` do not contain documents separators like empty lines.
+- `--sentences-per-doc`: Collect at most this number of sentences in one document when using `--dataset-structure=one-sentence-per-line`. This will apply in parallel with splitting of documents on empty lines. Defaults to `None`, that is, use only empty lines as documents separators. Be aware that some datasets like `bookcorpus` do not contain documents separators like empty lines.
+`--compute-words-tails`. This will generate and additional boolean vector where a True means that the corresponding token is tail. A tail is a token in a word (composed of at least 2 tokens) that is not first. 
 - `--seed`: Set seed for reproducibility.
+
 
 ## Useful examples
 
 ### Wikipedia
 
-- Create wikipedia dataset pretokenized with the bert tokenizer `bert-base-cased` with a maximal sequence length of `128`:
+- Create wikipedia dataset pretokenized with the bert tokenizer `bert-base-cased` with a maximal sequence length of `128`.
 ```bash
 python -m create_pretraining_dataset --compression bz2 \
     --output-file wikipedia-bert-cased-128-example.bz2 \
@@ -63,7 +72,8 @@ python -m create_pretraining_dataset --compression bz2 \
     --tokenizer bert-base-cased \
     --max-sequence-length 128 --num-processes 16
 ```
-- Same but with a maximal sequence length of `512`:
+
+- Same but with a maximal sequence length of `512`.
 ```bash
 python -m create_pretraining_dataset --compression bz2 \
     --output-file wikipedia-bert-cased-512-example.bz2 \
@@ -71,6 +81,16 @@ python -m create_pretraining_dataset --compression bz2 \
     --tokenizer bert-base-cased \
     --max-sequence-length 512 --num-processes 16
 ```
+
+- Same but with the `roberta-base` tokenizer.
+```bash
+python -m create_pretraining_dataset --compression bz2 \
+    --output-file wikipedia-roberta-512-example.bz2 \
+    --dataset-names wikipedia:20200501.en \
+    --tokenizer roberta-base \
+    --max-sequence-length 512 --num-processes 16
+```
+
 
 ### OpenWebText
 
@@ -80,63 +100,63 @@ python -m create_pretraining_dataset --compression bz2 \
     --output-file openwebtext-bert-cased-128-example.bz2 \
     --dataset-names openwebtext \
     --tokenizer bert-base-cased \
-    --max-sequence-length 128 --num-processes 16 --limit 200
+    --max-sequence-length 128 --num-processes 16
+```
+
+- Same but limiting total number of documents and increasing maximum sequence length.
+```bash
+python -m create_pretraining_dataset --compression bz2 \
+    --output-file openwebtext-bert-cased-512-example.bz2 \
+    --dataset-names openwebtext \
+    --tokenizer bert-base-cased \
+    --max-sequence-length 512 --num-processes 16 --limit 200
 ```
 
 
+### BookCorpus
 
-
-## How to use the `CompressedDictionary`
-
-Using a dataset created with the command before is very easy since it is a python dictionary with some enhancements under the hood. The only requirement is that keys must be integers (`int32`). There are two layers of compression: all values of the dictionary are individually compressed and each dump is finally compressed on disk.
-
-You can load it from the dump file and use it as in the following example.
-```python
->>> from create_pretraining_dataset.utils import CompressedDictionary
->>> 
->>> d = CompressedDictionary.load("/path/to/file.bz2")
->>> # OR
->>> d = CompressedDictionary.load("/path/to/file.xz", compression="xz")
->>> # OR
->>> d = CompressedDictionary()
->>> d[0] = {'input_ids': [1, 2, 3, 4], 'attention_mask': [1, 1, 1, 1], 'token_type_ids': [0, 0, 1, 1], 'words_tails': [True, False, True, True]}
->>>
->>> # use it like a normal dictionary
->>> # remember that keys are integers (to be better compatible with pytorch dataset indexing with integers)
->>> d[0]
-{'input_ids': [1, 2, 3, 4], 'attention_mask': [1, 1, 1, 1], 'token_type_ids': [0, 0, 1, 1], 'words_tails': [True, False, True, True]}
->>>
->>> for k in d.keys():
->>>     # do something with d[k]
->>> # OR
->>> for k, value in d.items():
->>>     print(k, value) # print millions of entries is not always a good idea...
->>>
->>> # delete an entry
->>> del d[0]
->>>
->>> # get number of key-value pairs
->>> len(d)
-1
->>>
->>> # access compressed data directly
->>> d._content[0]
-b"3hbwuchbufbou&RFYUVGBKYU6T76\x00\x00" # some compressed byte array corresponding to the d[0] value
->>>
->>> # save the dict
->>> d.dump("/path/to/new/dump.bz2") # no compression argument. the compression is the same used for values.
->>>
->>> # split the dict in a set of smaller ones
->>> d.update((i, d[0]) for i in range(5))
->>> res = d.split(parts=2, reset_keys=True, drop_last=False, shuffle=True) # split are returned as a generator
->>> list(next(res).items())
-[(0, {'input_ids': [1, 2, 3, 4], 'attention_mask': [1, 1, 1, 1], 'token_type_ids': [0, 0, 1, 1], 'words_tails': [True, False, True, True]}), (1, {'input_ids': [1, 2, 3, 4], 'attention_mask': [1, 1, 1, 1], 'token_type_ids': [0, 0, 1, 1], 'words_tails': [True, False, True, True]}), (2, {'input_ids': [1, 2, 3, 4], 'attention_mask': [1, 1, 1, 1], 'token_type_ids': [0, 0, 1, 1], 'words_tails': [True, False, True, True]})]
->>>
->>> list(next(res).items())
-[(0, {'input_ids': [1, 2, 3, 4], 'attention_mask': [1, 1, 1, 1], 'token_type_ids': [0, 0, 1, 1], 'words_tails': [True, False, True, True]}), (1, {'input_ids': [1, 2, 3, 4], 'attention_mask': [1, 1, 1, 1], 'token_type_ids': [0, 0, 1, 1], 'words_tails': [True, False, True, True]})]
->>>
->>> list(next(res).items())
-Traceback (most recent call last):
-  File "<stdin>", line 1, in <module>
-StopIteration
+- Create bookcorpus with a maximum sequeunce length of `128`. Bookcorpus contains a sentence per line, instead of a document per line like the majority of the datasets.
+```bash
+python -m create_pretraining_dataset \
+    --output-file bookcorpus-bert-cased-128.bz2 \
+    --dataset-names bookcorpus \
+    --tokenizer bert-base-cased \
+    --max-sequence-length 128 \
+    --dataset-structure one-sentence-per-line --sentences-per-doc 200
 ```
+
+- Same but with a maximum sequeunce length of `512`.
+```bash
+python -m create_pretraining_dataset \
+    --output-file bookcorpus-bert-cased-512.bz2 \
+    --dataset-names bookcorpus \
+    --tokenizer bert-base-cased \
+    --max-sequence-length 512 \
+    --dataset-structure one-sentence-per-line --sentences-per-doc 200
+```
+
+
+### BookCorpusOpen
+
+- Create bookcorpus (open version) with a maximum sequeunce length of `128`.
+```bash
+python -m create_pretraining_dataset \
+    --output-file bookcorpusopen-bert-cased-128.bz2 \
+    --dataset-names bookcorpusopen \
+    --tokenizer bert-base-cased \
+    --max-sequence-length 128
+```
+
+- Same but with a maximum sequeunce length of `512`.
+```bash
+python -m create_pretraining_dataset \
+    --output-file bookcorpusopen-bert-cased-512.bz2 \
+    --dataset-names bookcorpusopen \
+    --tokenizer bert-base-cased \
+    --max-sequence-length 512
+```
+
+
+## CompressedDictionary
+
+This piece of code has been moved in a separate [repository](https://github.com/lucadiliello/compressed-dictionary) for better code management.

@@ -3,7 +3,7 @@ from typing import Generator
 from threading import Thread
 from multiprocessing import Queue, Process
 
-from create_pretraining_dataset.utils import CompressedDictionary
+from compressed_dictionary import CompressedDictionary
 from tqdm import tqdm
 
 
@@ -67,7 +67,7 @@ def multiprocessing_addition(
     producer_thread.start()
 
     base = len(cdictionary)
-    for i, res in tqdm(enumerate(consumer(out_queues, num_processes)), desc="Lines added to the dict", position=3):
+    for i, res in tqdm(enumerate(consumer(out_queues, num_processes)), desc="Lines added to the dict", position=2):
         cdictionary.__add_already_compresses_value__(base + i, res) 
 
     logging.info("Waiting for processes and threads to finish")
