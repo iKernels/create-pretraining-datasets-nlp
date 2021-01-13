@@ -147,13 +147,13 @@ python -m create_pretraining_dataset \
     --max-sequence-length 128
 ```
 
-- Same but with a maximum sequeunce length of `512`.
+- Same but with a maximum sequeunce length of `512` and computing words tails.
 ```bash
 python -m create_pretraining_dataset \
     --output-file bookcorpusopen-bert-cased-512.bz2 \
     --dataset-names bookcorpusopen \
     --tokenizer bert-base-cased \
-    --max-sequence-length 512
+    --max-sequence-length 512 --compute-words-tails
 ```
 
 

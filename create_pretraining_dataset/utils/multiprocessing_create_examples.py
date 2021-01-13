@@ -134,10 +134,6 @@ class ExampleCreator(object):
                 second_segment += sentence
                 second_segment_length += sentence_len
 
-        # trim to max_length while accounting for not-yet-added [CLS]/[SEP] tokens
-        # first_segment = first_segment[: self.max_length - 2]
-        # second_segment = second_segment[:max(0, self.max_length - len(first_segment) - 3)]
-
         # prepare to start building the next example
         self.current_sentences = []
         self.current_lengths = []
@@ -160,26 +156,21 @@ class ExampleCreator(object):
     ):
         f""" Converts two "segments" of text into an example. """
 
+        tok_kwargs = {
+            'padding': 'do_not_pad' if self.do_not_pad else 'max_length',
+            'max_length': self.max_length,
+            'verbose': False,
+            'truncation': True
+        }
+
         if second_segment:
-            example = self.tokenizer(
-                first_segment,
-                second_segment,
-                padding='do_not_pad' if self.do_not_pad else 'max_length',
-                max_length=self.max_length,
-                verbose=False,
-                truncation=True
-            )
+            example = self.tokenizer(first_segment, second_segment, **tok_kwargs)
         else:
-            example = self.tokenizer(
-                first_segment,
-                padding='do_not_pad' if self.do_not_pad else 'max_length',
-                max_length=self.max_length,
-                verbose=False,
-                truncation=True
-            )
+            example = self.tokenizer(first_segment, **tok_kwargs)
 
         if self.add_words_tails:
             example['words_tails'] = get_words_tails(self.tokenizer, example['input_ids'])
+
         return dict(example)
 
 

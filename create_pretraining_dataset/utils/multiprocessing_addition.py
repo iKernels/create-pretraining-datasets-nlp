@@ -60,17 +60,17 @@ def multiprocessing_addition(
     workers = [
         Process(target=worker, args=(in_queues[i], out_queues[i], compression)) for i in range(num_processes)
     ]
-    for w in tqdm(workers, total=num_processes, desc="Starting dictionary workers"):
+    for w in tqdm(workers, total=num_processes, desc="(Addition) Starting workers"):
         w.start()
 
     producer_thread = Thread(target=producer, args=(examples_generator, in_queues, num_processes))
     producer_thread.start()
 
     base = len(cdictionary)
-    for i, res in tqdm(enumerate(consumer(out_queues, num_processes)), desc="Lines added to the dict", position=2):
+    for i, res in tqdm(enumerate(consumer(out_queues, num_processes)), desc="(Addition) Lines added to the dict", position=2):
         cdictionary.__add_already_compresses_value__(base + i, res) 
 
-    logging.info("Waiting for processes and threads to finish")
+    logging.info("(Addition) Waiting for processes and threads to finish")
     producer_thread.join()
     for w in workers:
         w.join()
