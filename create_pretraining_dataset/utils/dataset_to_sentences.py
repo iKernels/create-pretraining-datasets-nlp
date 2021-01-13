@@ -29,7 +29,7 @@ def dataset_to_sentences(dataset, mode=MODES[0], limit=None, limit_sentences_per
         if limit is None:
             kwargs['total'] = dataset['train'].num_rows
 
-        for i, document in tqdm(enumerate(dataset['train']), desc="Splitting documents in sentences", position=0, **kwargs):
+        for i, document in tqdm(enumerate(dataset['train']), desc="(Splitting) Splitting documents in sentences", position=0, **kwargs):
 
             if limit is not None and i >= limit:
                 break
@@ -52,7 +52,7 @@ def dataset_to_sentences(dataset, mode=MODES[0], limit=None, limit_sentences_per
         accumulated = 0
         documents_returned = 0
 
-        pbar = tqdm(desc="Creating documents from sentences", position=0, **kwargs)
+        pbar = tqdm(desc="(Splitting) Creating documents from sentences", position=0, **kwargs)
 
         for sentence in dataset['train']:
             

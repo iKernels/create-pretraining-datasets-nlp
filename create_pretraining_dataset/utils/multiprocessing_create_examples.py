@@ -19,41 +19,44 @@ from transformers import (
 logging.getLogger().setLevel(logging.INFO)
 
 
-def bert_word_tails(tokenizer, ids):
-    return [
-        token.startswith('##') for token in tokenizer.convert_ids_to_tokens(ids, skip_special_tokens=False)
-    ]
+class TailsCreator:
 
-def roberta_words_tails(tokenizer, ids):
-    return [
-        (not token.startswith('Ġ')) and (token not in tokenizer.all_special_tokens) and (i != 1)
-        for i, token in enumerate(tokenizer.convert_ids_to_tokens(ids, skip_special_tokens=False))
-    ]
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
 
-def gpt_words_tails(tokenizer, ids):
-    raise NotImplementedError("This tokenizer is not supported yet")
+        if isinstance(
+            tokenizer, (BertTokenizer, BertTokenizerFast, ElectraTokenizer, ElectraTokenizerFast)
+        ):
+            self.get_words_tails = self.bert_word_tails
 
-def xlnet_words_tails(tokenizer, ids):
-    raise NotImplementedError("This tokenizer is not supported yet")
+        elif isinstance(tokenizer, (RobertaTokenizer, RobertaTokenizerFast)):
+            self.get_words_tails = self.roberta_words_tails
 
-def get_words_tails(tokenizer, ids):
-    r""" Return words tails built in the right way based on model type. """
-    if isinstance(
-        tokenizer, (BertTokenizer, BertTokenizerFast, ElectraTokenizer, ElectraTokenizerFast)
-    ):
-        return bert_word_tails(tokenizer, ids)
+        elif isinstance(tokenizer, (XLNetTokenizer, XLNetTokenizerFast)):
+            self.get_words_tails = self.xlnet_words_tails
 
-    elif isinstance(tokenizer, (RobertaTokenizer, RobertaTokenizerFast)):
-        return roberta_words_tails(tokenizer, ids)
+        elif isinstance(tokenizer, (GPT2Tokenizer, GPT2TokenizerFast)):
+            self.get_words_tails = self.gpt_words_tails
+  
+    def bert_word_tails(self, ids):
+        return [
+            token.startswith('##') for token in self.tokenizer.convert_ids_to_tokens(ids, skip_special_tokens=False)
+        ]
 
-    elif isinstance(tokenizer, (XLNetTokenizer, XLNetTokenizerFast)):
-        return xlnet_words_tails(tokenizer, ids)
+    def roberta_words_tails(self, ids):
+        return [
+            (not token.startswith('Ġ')) and (token not in self.tokenizer.all_special_tokens) and (i != 1)
+            for i, token in enumerate(self.tokenizer.convert_ids_to_tokens(ids, skip_special_tokens=False))
+        ]
 
-    elif isinstance(tokenizer, (GPT2Tokenizer, GPT2TokenizerFast)):
-        return gpt_words_tails(tokenizer, ids)
+    def gpt_words_tails(self, ids):
+        raise NotImplementedError("This tokenizer is not supported yet")
+
+    def xlnet_words_tails(self, ids):
+        raise NotImplementedError("This tokenizer is not supported yet")
 
 
-class ExampleCreator(object):
+class ExampleCreator:
 
     def __init__(
         self,
@@ -66,17 +69,18 @@ class ExampleCreator(object):
         probability_first_segment_over_length,
     ):
         self.tokenizer = tokenizer
+        self.words_tails_creator = TailsCreator(tokenizer)
         self.probability_single_sentence = probability_single_sentence
         self.probability_random_length = probability_random_length
         self.probability_first_segment_over_lengt = probability_first_segment_over_length
-        
+
         self.do_not_pad = do_not_pad
         self.add_words_tails = add_words_tails
         self.max_length = max_sequence_length
         self.target_length = max_sequence_length
         self.current_sentences = []
         self.current_lengths = []
-    
+
     def current_length(self):
         return sum(self.current_lengths)
 
@@ -143,7 +147,7 @@ class ExampleCreator(object):
             self.target_length = random.randint(5, self.max_length)
         else:
             self.target_length = self.max_length
-        
+
         return self.make_example(
             first_segment,
             second_segment
@@ -169,7 +173,7 @@ class ExampleCreator(object):
             example = self.tokenizer(first_segment, **tok_kwargs)
 
         if self.add_words_tails:
-            example['words_tails'] = get_words_tails(self.tokenizer, example['input_ids'])
+            example['words_tails'] = self.words_tails_creator.get_words_tails(example['input_ids'])
 
         return dict(example)
 
@@ -178,7 +182,6 @@ def producer(sentences_generator, in_queues, num_processes):
     r""" Fill the input queue with examples taken from the generator and add a counter. """
     i = 0
     for sentence in sentences_generator:
-        assert sentence is not None
         in_queues[i].put(sentence)
         if not sentence:
             i = (i + 1) % num_processes
@@ -241,7 +244,7 @@ def consumer(out_queues, num_processes):
     while True:
         if not terminated[i]:
             try:
-                res = out_queues[i].get(timeout=1)
+                res = out_queues[i].get(timeout=0.01)
                 if res is None:
                     terminated[i] = True
                     if all(terminated):
@@ -266,8 +269,8 @@ def multiprocessing_create_examples(
 ):
     r""" `sentences` is a generator providing sentences separated in documents by empty sentence. """
 
-    in_queues = [Queue() for _ in range(num_processes)]
-    out_queues = [Queue() for _ in range(num_processes)]
+    in_queues = [Queue(maxsize=10000) for _ in range(num_processes)]
+    out_queues = [Queue(maxsize=10000) for _ in range(num_processes)]
 
     workers = [
         Process(target=worker, args=(tokenizer, in_queues[i], out_queues[i], i),
@@ -282,15 +285,15 @@ def multiprocessing_create_examples(
         ) for i in range(num_processes)
     ]
 
-    for w in tqdm(workers, total=num_processes, desc="Starting example workers"):
+    for w in tqdm(workers, total=num_processes, desc="(Creation) Starting example workers"):
         w.start()
 
     producer_thread = Thread(target=producer, args=(sentences, in_queues, num_processes))
     producer_thread.start()
 
-    yield from tqdm(consumer(out_queues, num_processes), desc="Creating examples", position=1)
+    yield from tqdm(consumer(out_queues, num_processes), desc="(Creation) Creating examples", position=1)
 
-    logging.info("Waiting for processes and threads to finish")
+    logging.info("(Creation) Waiting for processes and threads to finish")
     producer_thread.join()
 
     for w in workers:

@@ -98,12 +98,16 @@ def main(args):
         )
         # 700 - 800 it/s with 8 threads
 
+        """
         multiprocessing_addition(
             final_cdictionary,
             examples,
             num_processes=max(args.num_processes // 3, 1),
             compression=args.compression
         ) # 500 - 600 it/s with 8 threads
+        """
+        for e in examples:
+            l = e
 
     logging.info(f"Writing results to file {args.output_file}")
     final_cdictionary.dump(args.output_file)
