@@ -4,6 +4,7 @@ import multiprocessing
 import os
 from argparse import ArgumentParser
 
+from tqdm import tqdm
 import datasets
 from transformers import AutoTokenizer
 
@@ -13,6 +14,12 @@ from compressed_dictionary import CompressedDictionary
 
 logging.getLogger().setLevel(logging.INFO)
 ALL_DATASET_NAMES = datasets.list_datasets()
+
+
+def heavy_load(dataset):
+    """ Load entire dataset in memory. """
+    res = list(tqdm(dataset['train'], desc="Loading entire dataset in memory", total=dataset['train'].num_rows))
+    return res
 
 
 def main(args):
@@ -77,8 +84,13 @@ def main(args):
         dataset = datasets.load_dataset(name, config)
         logging.info(f"Processing input dataset {name} with {dataset['train'].num_rows} {'documents' if args.dataset_structure is MODES[0] else 'sentences'}")
 
+        if args.all_in_memory:
+            documents = heavy_load(dataset)
+        else:
+            documents = dataset['train']
+
         sentences = dataset_to_sentences(
-            dataset,
+            documents,
             limit=args.limit,
             mode=args.dataset_structure,
             limit_sentences_per_doc=args.sentences_per_doc
@@ -145,6 +157,8 @@ if __name__ == "__main__":
     parser.add_argument('--compute-words-tails', action="store_true",
                         help="Words tails in an additional array in which True mean that the corresponding token is part of a composed word and is not the first. This array helps in creating whole word masks.")
     parser.add_argument('--seed', default=1337, required=False, type=int,
+                        help="Seed for reproducibility.")
+    parser.add_argument('--all-in-memory', action="store_true",
                         help="Seed for reproducibility.")
 
     args = parser.parse_args()
