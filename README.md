@@ -4,15 +4,14 @@ Create large pre-training datasets for NLP
 
 ## Install
 
-Install with pip
-
-```bash
-pip install git+https://github.com/iKernels/create-pretraining-datasets-nlp.git --upgrade
-```
-
-install also `compressed-dictionary` library
+First install the `compressed-dictionary` library
 ```bash
 pip install git+https://github.com/lucadiliello/compressed-dictionary.git --upgrade
+```
+
+and then install this library
+```bash
+pip install git+https://github.com/iKernels/create-pretraining-datasets-nlp.git --upgrade
 ```
 
 
