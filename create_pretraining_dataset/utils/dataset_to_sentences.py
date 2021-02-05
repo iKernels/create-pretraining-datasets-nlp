@@ -4,7 +4,7 @@ from tqdm import tqdm
 MODES = ['one-doc-per-line', 'one-sentence-per-line']
 
 
-def dataset_to_sentences(dataset, mode=MODES[0], limit=None, limit_sentences_per_doc=None):
+def dataset_to_sentences(documents, mode=MODES[0], limit=None, limit_sentences_per_doc=None):
     r"""
     This function taken in input a dataset instance and returns a sequence of sentences with some empty sentences
     separating different documents.
@@ -27,9 +27,12 @@ def dataset_to_sentences(dataset, mode=MODES[0], limit=None, limit_sentences_per
         r""" Dataset as sequence of documents. """
 
         if limit is None:
-            kwargs['total'] = dataset['train'].num_rows
+            try:
+                kwargs['total'] = documents.num_rows
+            except:
+                kwargs['total'] = len(documents)
 
-        for i, document in tqdm(enumerate(dataset['train']), desc="(Splitting) Splitting documents in sentences", position=0, **kwargs):
+        for i, document in tqdm(enumerate(documents), desc="(Splitting) Splitting documents in sentences", position=0, **kwargs):
 
             if limit is not None and i >= limit:
                 break
@@ -54,7 +57,7 @@ def dataset_to_sentences(dataset, mode=MODES[0], limit=None, limit_sentences_per
 
         pbar = tqdm(desc="(Splitting) Creating documents from sentences", position=0, **kwargs)
 
-        for sentence in dataset['train']:
+        for sentence in documents:
             
             if limit is not None and documents_returned >= limit:
                 break
