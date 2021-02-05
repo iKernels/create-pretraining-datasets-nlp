@@ -77,6 +77,9 @@ def main(args):
         dataset = datasets.load_dataset(name, config)
         logging.info(f"Processing input dataset {name} with {dataset['train'].num_rows} {'documents' if args.dataset_structure is MODES[0] else 'sentences'}")
 
+        if args.all_in_memory:
+            dataset = iter(list(dataset))
+
         sentences = dataset_to_sentences(
             dataset,
             limit=args.limit,

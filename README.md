@@ -58,6 +58,7 @@ Available args:
 - `--sentences-per-doc`: Collect at most this number of sentences in one document when using `--dataset-structure=one-sentence-per-line`. This will apply in parallel with splitting of documents on empty lines. Defaults to `None`, that is, use only empty lines as documents separators. Be aware that some datasets like `bookcorpus` do not contain documents separators like empty lines.
 `--compute-words-tails`. This will generate and additional boolean vector where a True means that the corresponding token is tail. A tail is a token in a word (composed of at least 2 tokens) that is not first. 
 - `--seed`: Set seed for reproducibility.
+- `--all-in-memory`: Load the entire input dataset in memory. Useful on distributed file systems.
 
 
 ## Useful examples
