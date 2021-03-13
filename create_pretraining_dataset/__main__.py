@@ -67,12 +67,13 @@ def main(args):
         def filter_fn(_, index):
             return index < args.limit
         logging.info(f"Filtering input dataset to reduce length")
-        dataset = dataset.filter(filter_fn, with_indices=True)
+        dataset = dataset.filter(filter_fn, with_indices=True, keep_in_memory=True)
 
     # process dataset
     parsed = dataset.map(
         function=strategy,
         batched=True,
+        keep_in_memory=True,
         remove_columns=dataset.column_names, # this is must b/c we will return different number of rows
         disable_nullable=True,
         input_columns=args.dataset_columns,
@@ -90,19 +91,19 @@ if __name__ == "__main__":
 
     parser = ArgumentParser("Create a tokenized dataset for pre-training")
 
-    parser.add_argument('-o', '--output-file', type=str, required=True, help="Output file path.")
+    parser.add_argument('-o', '--output_file', type=str, required=True, help="Output file path.")
     parser.add_argument('--name', type=str, required=True, nargs='+',
                         help=f"Dataset name to be parsed and preprocessed."
                              f" Separate with a semicolon the specific dataset name from the config,"
                              f" for example `wikipedia:20200501.en`. Available datasets {ALL_DATASET_NAMES}")
-    parser.add_argument('-p', '--processes', type=int, required=False, default=multiprocessing.cpu_count(),
+    parser.add_argument('--processes', type=int, required=False, default=multiprocessing.cpu_count(),
                         help="Number of parallel processes to use.")
     parser.add_argument('--dataset_columns', nargs='+', default=['text'], required=False, type=str,
                         help="Columns names in the dataset. Provide many if nested.")
     
     parser.add_argument('--tokenizer', required=True, type=str,  
                         help="Name of the huggingface pre-trained tokenizer to use to tokenizer the text.")
-    parser.add_argument('--max-sequence-length', type=int, required=True,
+    parser.add_argument('--max_sequence_length', type=int, required=True,
                         help="Max sequence length to fill sentence.")
     parser.add_argument('--do_not_pad', action="store_true", help="Avoid padding to `max-sequence-length`.")
 
@@ -114,7 +115,7 @@ if __name__ == "__main__":
                         help='Batch size in parallel preprocessing.')
 
     parser.add_argument('--strategy', type=str, required=True, choices=ALL_STRATEGIES, help="Strategy to use to create the dataset.")
-    parser.add_argument('--compute-words-tails', action="store_true",
+    parser.add_argument('--compute_words_tails', action="store_true",
                         help="Words tails in an additional array in which True mean that the corresponding token is part of a composed word and is not the first. This array helps in creating whole word masks.")
     parser.add_argument('--seed', default=1337, required=False, type=int,
                         help="Seed for reproducibility.")

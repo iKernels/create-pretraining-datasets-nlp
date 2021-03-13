@@ -8,3 +8,4 @@ tqdm>=4.49.0
 transformers>=4.3.2
 compressed-dictionary>=1.2.1
 transformers-lightning>=0.5.3
+pytorch-lightning>=1.2.1
