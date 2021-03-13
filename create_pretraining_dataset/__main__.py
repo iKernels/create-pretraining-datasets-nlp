@@ -5,13 +5,14 @@ import os
 from argparse import ArgumentParser
 
 import datasets
-from tqdm import tqdm
 from transformers import AutoTokenizer
 
 from compressed_dictionary import CompressedDictionary
 from transformers_lightning.utils import get_classes_from_module
 from create_pretraining_dataset import strategies
 from create_pretraining_dataset.strategies import _Strategy
+from create_pretraining_dataset.utils import dataset_to_cdictionary
+
 
 logging.getLogger().setLevel(logging.INFO)
 ALL_DATASET_NAMES = datasets.list_datasets()
@@ -55,7 +56,6 @@ def main(args):
     )
 
     strategy = ALL_STRATEGIES[args.strategy](args, tokenizer)
-    final_cdictionary = CompressedDictionary()
 
     logging.info(f"Loading input dataset {name}")   
     dataset = datasets.load_dataset(name, config)
@@ -80,8 +80,9 @@ def main(args):
         writer_batch_size=args.batch_size,
         num_proc=args.processes
     )
-    for i, data in tqdm(enumerate(parsed), total=len(parsed), desc="Adding to compressed dictionary"):
-        final_cdictionary[i] = data
+
+    logging.info(f"Creating compressed dictionary...")
+    final_cdictionary = dataset_to_cdictionary(examples_generator=iter(parsed), compression=args.compression, num_processes=args.processes)
 
     logging.info(f"Writing results to file {args.output_file}")
     final_cdictionary.dump(args.output_file)
