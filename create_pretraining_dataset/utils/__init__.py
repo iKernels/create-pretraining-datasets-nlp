@@ -1,3 +1,1 @@
-from create_pretraining_dataset.utils.multiprocessing_create_examples import multiprocessing_create_examples
-from create_pretraining_dataset.utils.dataset_to_sentences import dataset_to_sentences, MODES
-from create_pretraining_dataset.utils.multiprocessing_addition import multiprocessing_addition
+from create_pretraining_dataset.utils.tails_creator import TailsCreator
