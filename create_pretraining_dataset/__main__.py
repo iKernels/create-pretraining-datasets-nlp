@@ -70,7 +70,7 @@ def main(args):
         dataset = dataset.filter(filter_fn, with_indices=True, keep_in_memory=True)
 
     # process dataset
-    parsed = dataset.map(
+    processed = dataset.map(
         function=strategy,
         batched=True,
         keep_in_memory=True,
@@ -81,8 +81,10 @@ def main(args):
         num_proc=args.processes
     )
 
+    processed = iter(list(processed))
+
     logging.info(f"Creating compressed dictionary...")
-    final_cdictionary = dataset_to_cdictionary(examples_generator=iter(parsed), compression=args.compression, num_processes=args.processes)
+    final_cdictionary = dataset_to_cdictionary(dataset=processed, compression=args.compression, num_processes=args.processes)
 
     logging.info(f"Writing results to file {args.output_file}")
     final_cdictionary.dump(args.output_file)

@@ -1,5 +1,4 @@
 import logging
-from typing import Generator
 from threading import Thread
 from multiprocessing import Queue, Process
 
@@ -48,7 +47,7 @@ def consumer(out_queues, num_processes):
 
 
 def dataset_to_cdictionary(
-    examples_generator: Generator,
+    dataset,
     num_processes: int = 1,
     compression: str = 'xz'
 ):
@@ -63,7 +62,7 @@ def dataset_to_cdictionary(
     for w in tqdm(workers, total=num_processes, desc="(Addition) Starting workers"):
         w.start()
 
-    producer_thread = Thread(target=producer, args=(examples_generator, in_queues, num_processes))
+    producer_thread = Thread(target=producer, args=(dataset, in_queues, num_processes))
     producer_thread.start()
 
     base = len(cdictionary)
