@@ -1,5 +1,11 @@
 # Change log
 
+
+## Version 0.4.1
+
+- Added multiprocessing to speed up compressed dictionary creation.
+
+
 ## Version 0.4.0
 
 - Added strategies, extendible by users. No more only the ELECTRA way of creating datasets.
