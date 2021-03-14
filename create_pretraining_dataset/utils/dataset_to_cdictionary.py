@@ -59,17 +59,17 @@ def dataset_to_cdictionary(
     workers = [
         Process(target=worker, args=(in_queues[i], out_queues[i], compression)) for i in range(num_processes)
     ]
-    for w in tqdm(workers, total=num_processes, desc="(Addition) Starting workers"):
+    for w in tqdm(workers, total=num_processes, desc="Starting workers"):
         w.start()
 
     producer_thread = Thread(target=producer, args=(dataset, in_queues, num_processes))
     producer_thread.start()
 
     base = len(cdictionary)
-    for i, res in tqdm(enumerate(consumer(out_queues, num_processes)), desc="(Addition) Lines added to the dict", position=2):
+    for i, res in tqdm(enumerate(consumer(out_queues, num_processes)), desc="(Addition) Lines added to the dict"):
         cdictionary.__add_already_compresses_value__(base + i, res) 
 
-    logging.info("(Addition) Waiting for processes and threads to finish")
+    logging.info("Waiting for processes and threads to finish")
     producer_thread.join()
     for w in workers:
         w.join()

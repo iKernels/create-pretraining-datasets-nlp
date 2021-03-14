@@ -6,6 +6,7 @@ from argparse import ArgumentParser
 
 import datasets
 from transformers import AutoTokenizer
+from tqdm import tqdm
 
 from compressed_dictionary import CompressedDictionary
 from transformers_lightning.utils import get_classes_from_module
@@ -59,32 +60,67 @@ def main(args):
 
     logging.info(f"Loading input dataset {name}")   
     dataset = datasets.load_dataset(name, config)
-    logging.info(f"Processing input dataset {name} with {dataset['train'].num_rows} documents")
 
     # filter away examples after limit
     dataset = dataset['train']
     if args.limit is not None:
         def filter_fn(_, index):
             return index < args.limit
+
         logging.info(f"Filtering input dataset to reduce length")
-        dataset = dataset.filter(filter_fn, with_indices=True, keep_in_memory=True)
+        dataset = dataset.filter(
+            function=filter_fn,
+            with_indices=True,
+            keep_in_memory=True,
+            num_proc=args.processes
+        )
 
     # process dataset
+    logging.info(f"Processing input dataset {name} with {dataset.num_rows} documents")
     processed = dataset.map(
         function=strategy,
         batched=True,
         keep_in_memory=True,
-        remove_columns=dataset.column_names, # this is must b/c we will return different number of rows
+        remove_columns=dataset.column_names,
         disable_nullable=True,
         input_columns=args.dataset_columns,
-        writer_batch_size=args.batch_size,
+        batch_size=args.batch_size,
         num_proc=args.processes
     )
 
-    processed = iter(list(processed))
+    print(processed)
+
+    def compress(items, indexes):
+        res = [
+            CompressedDictionary.__compress__({
+                k: v[i] for k, v in items.items()
+            }, compression=args.compression)
+            for i in range(len(indexes))
+        ]
+        return { 'data': res }
+
+    logging.info(f"Compressing created items")
+    processed = processed.map(
+        function=compress,
+        batched=True,
+        with_indices=True,
+        keep_in_memory=True,
+        remove_columns=processed.column_names,
+        disable_nullable=True,
+        batch_size=args.batch_size,
+        num_proc=args.processes
+    )
+
+    final_cdictionary = CompressedDictionary(compression=args.compression)
+
+    logging.info("Loading into RAM")
+    processed = list(tqdm(processed, desc="Loading", total=len(processed)))
 
     logging.info(f"Creating compressed dictionary...")
-    final_cdictionary = dataset_to_cdictionary(dataset=processed, compression=args.compression, num_processes=args.processes)
+    for i, data in tqdm(enumerate(processed), total=len(processed), desc="Adding to dictionary"):
+        final_cdictionary.__add_already_compresses_value__(i, data['data'])
+    
+    # final_cdictionary = dataset_to_cdictionary(dataset=processed, compression=args.compression, num_processes=args.processes)
 
     logging.info(f"Writing results to file {args.output_file}")
     final_cdictionary.dump(args.output_file)
