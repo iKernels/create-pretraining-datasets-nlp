@@ -52,75 +52,41 @@ def main(args):
         "`max-sequence-length` must be None or a positive integer"
     )
 
-    assert args.limit is None or args.limit >= 0, (
-        "`limit` must be None or a positive integer"
+    assert args.reduce is None or args.reduce >= 1, (
+        "`reduce` must be None or a positive integer"
     )
 
     strategy = ALL_STRATEGIES[args.strategy](args, tokenizer)
 
     logging.info(f"Loading input dataset {name}")   
-    dataset = datasets.load_dataset(name, config)
+    dataset = datasets.load_dataset(name, config)['train']
 
-    # filter away examples after limit
-    dataset = dataset['train']
-    if args.limit is not None:
-        def filter_fn(_, index):
-            return index < args.limit
-
-        logging.info(f"Filtering input dataset to reduce length")
-        dataset = dataset.filter(
-            function=filter_fn,
-            with_indices=True,
-            keep_in_memory=True,
-            num_proc=args.processes
-        )
+    if args.reduce is not None:
+        # filter away examples
+        logging.info(f"Reducing dataset size by {args.reduce} times")
+        dataset = dataset.shard(num_shards=args.reduce, index=0, contiguous=False)
 
     # process dataset
     logging.info(f"Processing input dataset {name} with {dataset.num_rows} documents")
+
+    def process_fn(data):
+        return { 'data': [CompressedDictionary.__compress__(v, compression=args.compression) for v in strategy(data)] }
+
     processed = dataset.map(
-        function=strategy,
+        function=process_fn,
         batched=True,
-        keep_in_memory=True,
         remove_columns=dataset.column_names,
         disable_nullable=True,
         input_columns=args.dataset_columns,
-        batch_size=args.batch_size,
-        num_proc=args.processes
+        num_proc=args.processes,
+        writer_batch_size=10**4
     )
-
-    print(processed)
-
-    def compress(items, indexes):
-        res = [
-            CompressedDictionary.__compress__({
-                k: v[i] for k, v in items.items()
-            }, compression=args.compression)
-            for i in range(len(indexes))
-        ]
-        return { 'data': res }
-
-    logging.info(f"Compressing created items")
-    processed = processed.map(
-        function=compress,
-        batched=True,
-        with_indices=True,
-        keep_in_memory=True,
-        remove_columns=processed.column_names,
-        disable_nullable=True,
-        batch_size=args.batch_size,
-        num_proc=args.processes
-    )
+    logging.info(f"Dataset processed: {len(processed)} examples created")
 
     final_cdictionary = CompressedDictionary(compression=args.compression)
-
-    logging.info("Loading into RAM")
-    processed = list(tqdm(processed, desc="Loading", total=len(processed)))
-
     logging.info(f"Creating compressed dictionary...")
     for i, data in tqdm(enumerate(processed), total=len(processed), desc="Adding to dictionary"):
         final_cdictionary.__add_already_compresses_value__(i, data['data'])
-    
-    # final_cdictionary = dataset_to_cdictionary(dataset=processed, compression=args.compression, num_processes=args.processes)
 
     logging.info(f"Writing results to file {args.output_file}")
     final_cdictionary.dump(args.output_file)
@@ -146,12 +112,10 @@ if __name__ == "__main__":
                         help="Max sequence length to fill sentence.")
     parser.add_argument('--do_not_pad', action="store_true", help="Avoid padding to `max-sequence-length`.")
 
-    parser.add_argument('--limit', type=int, required=False, default=None,
-                        help='Limit number of documents in input.')
+    parser.add_argument('--reduce', type=int, required=False, default=None,
+                        help='Limit number of documents in input reducing dataset size by this number.')
     parser.add_argument('--compression', type=str, required=False, default='bz2', choices=CompressedDictionary.ALLOWED_COMPRESSIONS,
                         help='Compression algorithm of the output compressed dictionary.')
-    parser.add_argument('--batch_size', type=int, required=False, default=10**4,
-                        help='Batch size in parallel preprocessing.')
 
     parser.add_argument('--strategy', type=str, required=True, choices=ALL_STRATEGIES, help="Strategy to use to create the dataset.")
     parser.add_argument('--compute_words_tails', action="store_true",
