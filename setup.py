@@ -15,12 +15,11 @@ def load_requirements():
                 requirements.append(line)
     return requirements
 
+
+
 def get_version():
-    # get semver version [major.minor.patch]
-    json_version = {}
-    with open('.version.json', 'r') as f:
-        json_version = json.load(f)
-    return '.'.join(str(w) for w in [json_version['major'],json_version['minor'],json_version['patch']])
+    from create_pretraining_dataset import __version__
+    return __version__
 
 setuptools.setup(
     name='create-pretraining-datasets-nlp',

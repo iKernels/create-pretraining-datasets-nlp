@@ -1,7 +1,7 @@
 import random
 import re
 import math
-from typing import Union, Dict, List
+from typing import Any, Union, Dict, List
 
 from argparse import ArgumentParser, Namespace
 
@@ -57,9 +57,9 @@ class Electra(_Strategy):
             else:
                 examples_dict[k] = [v]
 
-    def __call__(self, text: Union[Dict, List]):
+    def __call__(self, text: List[Any]) -> List:
         r""" Process a batch of texts. """
-        new_examples = dict()
+        new_examples = []
 
         # for every doc
         for doc in text:
@@ -74,11 +74,11 @@ class Electra(_Strategy):
 
                 example = self.add_line(paragraph)
                 if example:
-                    self.add_example_to_dict(example, new_examples)
+                    new_examples.append(example)
 
             if self.current_length != 0:
                 example = self.create_example()
-                self.add_example_to_dict(example, new_examples)
+                new_examples.append(example)
 
         return new_examples
 
@@ -92,7 +92,7 @@ class Electra(_Strategy):
 
     def get_encoded_length(self, sentence):
         r""" Get number of expected tokens in this sentence. """
-        return len(self.tokenizer.tokenize(sentence))
+        return len(self.tokenizer.tokenize(sentence, verbose=False))
 
     def add_line(self, line):
         r"""Adds a line of text to the current example being built."""

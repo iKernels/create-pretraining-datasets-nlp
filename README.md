@@ -32,10 +32,10 @@ python -m create_pretraining_dataset \
     --tokenizer google/electra-small-generator \
     --max-sequence-length 128 \
     --processes 8 \
-    --limit 100
+    --reduce 10
 ```
 
-This example will read the first `100` documents from both the english wikipedia and creates a tokenized dataset with sentence pairs of about `128` tokens of length using `8` CPU cores. Datasets are taken from the [`datasets`](https://huggingface.co/docs/datasets/) library and tokenizers from the [`transformers`](https://huggingface.co/transformers/) repository.
+This example will read `1/10`th of the documents from the english wikipedia and will create a tokenized dataset with sentence pairs of about `128` tokens using `8` CPU cores. Datasets are taken from the [`datasets`](https://huggingface.co/docs/datasets/) library and tokenizers from the [`transformers`](https://huggingface.co/transformers/) repository. `CompressedDictionary`s are a special dictionaries taken from [repository](https://github.com/lucadiliello/compressed-dictionary). They allow for `dict`-like behaviour but compressing/decompressing values automatically to save memory.
 
 
 ### Other arguments
@@ -51,9 +51,8 @@ Available args:
 - `--tokenizer`: Name or path of the tokenizer to be used to tokenize the text.
 - `--max_sequence_length`: Max sequence length to fill examples. Defaults to `128`.
 - `--do_not_pad`: Do not pad examples to `--max_sequence_length`.
-- `--limit`: Limit number of documents in input (useful for debugging).
+- `--reduce`: Reduce number of documents in input by this quantity (useful for debugging).
 - `--compression`': Compression algorithm of the output dictionary. Defaults to `bz2` (bzip2). Available also compression with `gzip` and `xz` (lzma2).
-- `--batch_size`: Batch size in parallel preprocessing.
 - `--strategy`: Which strategy should be used to create examples. See all by running with `--help`.
 - `--compute_words_tails`. This will generate and additional boolean vector where a `True` means that the corresponding token is tail. A tail is a token in a word (composed of at least 2 tokens) that is not first. Useful when the model uses `whole word masking`.
 - `--seed`: Set seed for reproducibility.
@@ -61,7 +60,7 @@ Available args:
 
 ## Strategies
 
-### Electra
+### ELECTRA
 
 Pair sentencens with the following probabilities (that can be set from the command line).
 - `--probability_random_length`: Probability of creating a sample with the first part (before the separator) having a random length between 5 and `max_sequence_length`. Defaults to `0.05`.
@@ -69,6 +68,11 @@ Pair sentencens with the following probabilities (that can be set from the comma
 - `--probability_first_segment_over_length`: Probability of creating a very longer first sequence, eventually truncated. Defaults to `0.5`. 
 
 
-## CompressedDictionary
+### BERT
 
-This piece of code has been moved in a separate [repository](https://github.com/lucadiliello/compressed-dictionary) for better code management.
+Coming soon.
+
+
+### RoBERTa
+
+Coming soon.
