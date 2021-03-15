@@ -19,12 +19,12 @@ python -m create_pretraining_dataset --help
 Create a `wikipedia` dataset (as a compressed dictionary) with:
 ```bash
 python -m create_pretraining_dataset \
-    --compression bz2   
+    --compression bz2 \
     --strategy Electra \
-    --output-file wikipediaen-electra-small-gen-128 \
+    --output_file wikipediaen-electra-small-gen-128 \
     --name wikipedia 20200501.en \
     --tokenizer google/electra-small-generator \
-    --max-sequence-length 128 \
+    --max_sequence_length 128 \
     --processes 8 \
     --reduce 10
 ```
