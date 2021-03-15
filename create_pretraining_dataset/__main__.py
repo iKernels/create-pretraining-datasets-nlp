@@ -2,7 +2,7 @@ import random
 import logging
 import multiprocessing
 import os
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 
 import datasets
 from transformers import AutoTokenizer
@@ -12,7 +12,7 @@ from compressed_dictionary import CompressedDictionary
 from transformers_lightning.utils import get_classes_from_module
 from create_pretraining_dataset import strategies
 from create_pretraining_dataset.strategies import _Strategy
-from create_pretraining_dataset.utils import dataset_to_cdictionary
+from create_pretraining_dataset import __version__
 
 
 logging.getLogger().setLevel(logging.INFO)
@@ -75,6 +75,7 @@ def main(args):
     processed = dataset.map(
         function=process_fn,
         batched=True,
+        load_from_cache_file=False,
         remove_columns=dataset.column_names,
         disable_nullable=True,
         input_columns=args.dataset_columns,

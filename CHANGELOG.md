@@ -1,6 +1,11 @@
 # Change log
 
 
+## Version 0.4.2
+
+- Drastical improvement in performance and memory consumption
+
+
 ## Version 0.4.1
 
 - Added multiprocessing to speed up compressed dictionary creation.
